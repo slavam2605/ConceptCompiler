@@ -1,9 +1,10 @@
 package moklev.asm.instructions
 
-import moklev.asm.compiler.SSATransformer
 import moklev.asm.interfaces.Instruction
 import moklev.asm.interfaces.UnaryInstruction
 import moklev.asm.utils.CompileTimeValue
+import moklev.asm.utils.InStack
+import moklev.asm.utils.MemoryLocation
 import moklev.asm.utils.Variable
 import moklev.utils.ASMBuilder
 
@@ -18,15 +19,18 @@ class Assign(lhs: Variable, rhs1: CompileTimeValue) : UnaryInstruction(lhs, rhs1
 
     override fun simplify() = listOf(this)
 
-    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, String>) {
-        val firstOperand = lhs.text(variableAssignment)
-        val secondOperand = rhs1.text(variableAssignment)
-        if (firstOperand != secondOperand) {
-            builder.appendLine(
-                    "mov",
-                    firstOperand,
-                    secondOperand
-            )
+    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, MemoryLocation>) {
+        val firstOperand = lhs.value(variableAssignment)
+        val secondOperand = rhs1.value(variableAssignment)
+        if (firstOperand.toString() != secondOperand.toString()) {
+            if (firstOperand is InStack && secondOperand is InStack) {
+                // TODO get temp register
+                val tempRegister = "r15"
+                builder.appendLine("mov", tempRegister, "$secondOperand")
+                builder.appendLine("mov", "$firstOperand", tempRegister)
+            } else {
+                builder.appendLine("mov", "$firstOperand", "$secondOperand")
+            }
         }
     }
 }

@@ -1,3 +1,4 @@
+import moklev.asm.compiler.ConceptASMCompiler
 import moklev.asm.compiler.RegisterAllocation
 import moklev.asm.compiler.SSATransformer
 import moklev.asm.instructions.Add
@@ -6,9 +7,8 @@ import moklev.asm.instructions.IfGreaterJump
 import moklev.asm.instructions.Jump
 import moklev.asm.interfaces.Call
 import moklev.asm.interfaces.Label
+import moklev.asm.utils.ASMFunction
 import moklev.asm.utils.IntConst
-import moklev.asm.utils.StaticUtils
-import moklev.asm.utils.Undefined
 import moklev.asm.utils.Variable
 import moklev.utils.ASMBuilder
 
@@ -53,6 +53,10 @@ fun main(args: Array<String>) {
             Label("L3"),    
             Call("f", listOf(Variable("x")))
     )
+
+//    println(ConceptASMCompiler.compile(ASMFunction("bar", emptyList(), code)))
+//    
+//    
     
     for (instruction in code) {
         println(instruction)

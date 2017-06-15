@@ -1,10 +1,10 @@
 package moklev.asm.instructions
 
-import moklev.asm.compiler.SSATransformer
 import moklev.asm.interfaces.BinaryInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.CompileTimeValue
 import moklev.asm.utils.IntConst
+import moklev.asm.utils.MemoryLocation
 import moklev.asm.utils.Variable
 import moklev.utils.ASMBuilder
 
@@ -30,13 +30,7 @@ class Add(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
         return listOf(this)
     }
 
-    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, String>) {
-        val target = lhs.text(variableAssignment)
-        if (lhs.text(variableAssignment) != rhs1.text(variableAssignment)) {
-            val firstOperand = rhs1.text(variableAssignment)
-            builder.appendLine("mov", target, firstOperand)
-        }
-        val secondOperand = rhs2.text(variableAssignment)
-        builder.appendLine("add", target, secondOperand)
+    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, MemoryLocation>) {
+        defaultCompile(builder, variableAssignment, "add")
     }
 }

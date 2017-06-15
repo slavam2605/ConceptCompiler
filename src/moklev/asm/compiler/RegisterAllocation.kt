@@ -2,6 +2,9 @@ package moklev.asm.compiler
 
 import moklev.asm.compiler.SSATransformer.Block
 import moklev.asm.interfaces.AssignInstruction
+import moklev.asm.utils.InRegister
+import moklev.asm.utils.InStack
+import moklev.asm.utils.MemoryLocation
 import moklev.asm.utils.Variable
 import java.util.*
 import kotlin.collections.HashSet
@@ -141,7 +144,7 @@ object RegisterAllocation {
                 b.firstIndex in firstIndex..(lastIndex - 1)
     }
 
-    fun colorGraph(colors: Set<String>, initialColoring: Map<String, String>, graph: Graph): Map<String, String> {
+    fun colorGraph(colors: Set<String>, initialColoring: Map<String, String>, graph: Graph): Map<String, MemoryLocation> {
         val nbColors = colors.size
         val nbNodes = graph.nodes.size
         val matrix = Array(nbNodes) {
@@ -183,7 +186,10 @@ object RegisterAllocation {
         return result
                 .asSequence()
                 .mapIndexed { i, colorIndex ->
-                    indexToNode[i]!! to indexToColor[colorIndex]!!
+                    indexToNode[i]!! to if (colorIndex < 0)
+                        InStack(-colorIndex)
+                    else 
+                        InRegister(indexToColor[colorIndex]!!)
                 }
                 .toMap()
     }

@@ -4,6 +4,7 @@ import moklev.asm.instructions.Assign
 import moklev.asm.instructions.Jump
 import moklev.asm.interfaces.*
 import moklev.asm.utils.CompileTimeValue
+import moklev.asm.utils.MemoryLocation
 import moklev.asm.utils.Undefined
 import moklev.asm.utils.Variable
 import moklev.utils.ASMBuilder
@@ -36,7 +37,7 @@ object SSATransformer {
         fun compile(
                 builder: ASMBuilder,
                 blocks: Map<String, Block>,
-                variableAssignment: Map<String, String>,
+                variableAssignment: Map<String, MemoryLocation>,
                 nextBlockLabel: String?
         ) { 
             builder.appendLine("$label:")

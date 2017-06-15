@@ -2,9 +2,7 @@ package moklev.asm.interfaces
 
 import moklev.asm.compiler.SSATransformer
 import moklev.asm.instructions.Assign
-import moklev.asm.utils.CompileTimeValue
-import moklev.asm.utils.StaticUtils
-import moklev.asm.utils.Variable
+import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
 
 /**
@@ -44,7 +42,7 @@ sealed class Instruction {
     abstract fun compile(
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
-            variableAssignment: Map<String, String>,
+            variableAssignment: Map<String, MemoryLocation>,
             currentBlockLabel: String
     )
 }
@@ -54,12 +52,12 @@ sealed class Instruction {
  * modified is [lhs]
  */
 abstract class AssignInstruction(val lhs: Variable) : Instruction() {
-    abstract fun compile(builder: ASMBuilder, variableAssignment: Map<String, String>)
+    abstract fun compile(builder: ASMBuilder, variableAssignment: Map<String, MemoryLocation>)
 
     override fun compile(
             builder: ASMBuilder, 
             blocks: Map<String, SSATransformer.Block>,
-            variableAssignment: Map<String, String>, 
+            variableAssignment: Map<String, MemoryLocation>, 
             currentBlockLabel: String
     ) {
         if (variableAssignment[lhs.toString()] != null) {
@@ -73,6 +71,23 @@ abstract class AssignInstruction(val lhs: Variable) : Instruction() {
  */
 abstract class BinaryInstruction(lhs: Variable, val rhs1: CompileTimeValue, val rhs2: CompileTimeValue) : AssignInstruction(lhs) {
     override val usedValues = listOf(rhs1, rhs2)
+
+    fun defaultCompile(builder: ASMBuilder, variableAssignment: Map<String, MemoryLocation>, op: String) {
+        if (lhs.value(variableAssignment).toString() != rhs1.value(variableAssignment).toString()) {
+            Assign(lhs, rhs1).compile(builder, variableAssignment)
+        }
+        val target = lhs.value(variableAssignment)
+        val secondOperand = rhs2.value(variableAssignment)
+        if (target is InStack && secondOperand is InStack) {
+            // TODO get temp register
+            val tempRegister = "r15"
+            builder.appendLine("mov", tempRegister, "$target")
+            builder.appendLine(op, tempRegister, "$secondOperand")
+            builder.appendLine("mov", "$target", tempRegister)
+        } else {
+            builder.appendLine(op, "$target", "$secondOperand")
+        }
+    }
 }
 
 /**
@@ -87,12 +102,12 @@ abstract class UnaryInstruction(lhs: Variable, val rhs1: CompileTimeValue) : Ass
  * that can be jumped onto
  */
 abstract class BranchInstruction(val label: String) : Instruction() {
-    abstract fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, String>, destLabel: String)
+    abstract fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, MemoryLocation>, destLabel: String)
     
     override fun compile(
             builder: ASMBuilder, 
             blocks: Map<String, SSATransformer.Block>, 
-            variableAssignment: Map<String, String>, 
+            variableAssignment: Map<String, MemoryLocation>, 
             currentBlockLabel: String
     ) {
         val targetBlock = blocks[label]!!
@@ -101,7 +116,7 @@ abstract class BranchInstruction(val label: String) : Instruction() {
                 .filterIsInstance<Phi>()
                 .map { it.lhs to it.pairs.first { it.first == currentBlockLabel }.second }
                 .filter { variableAssignment[it.first.toString()] != null &&  
-                    it.first.text(variableAssignment) != it.second.text(variableAssignment) }
+                    it.first.value(variableAssignment) != it.second.value(variableAssignment) }
                 .toList()
         if (jointList.isEmpty()) {
             compileBranch(builder, variableAssignment, label)
@@ -133,7 +148,7 @@ class Call(val funcName: String, val args: List<CompileTimeValue>) : Instruction
     override fun compile(
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
-            variableAssignment: Map<String, String>,
+            variableAssignment: Map<String, MemoryLocation>,
             currentBlockLabel: String
     ) {
         // TODO implement
@@ -149,7 +164,7 @@ class Label(val name: String) : Instruction() {
     override fun compile(
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
-            variableAssignment: Map<String, String>,
+            variableAssignment: Map<String, MemoryLocation>,
             currentBlockLabel: String
     ) {}
 }
@@ -182,5 +197,5 @@ class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : Assi
         return listOf(this)
     }
 
-    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, String>) {}
+    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, MemoryLocation>) {}
 }

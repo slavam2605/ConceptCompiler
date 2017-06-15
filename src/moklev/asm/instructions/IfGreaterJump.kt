@@ -2,9 +2,7 @@ package moklev.asm.instructions
 
 import moklev.asm.interfaces.BranchInstruction
 import moklev.asm.interfaces.Instruction
-import moklev.asm.utils.CompileTimeValue
-import moklev.asm.utils.IntConst
-import moklev.asm.utils.Variable
+import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
 
 /**
@@ -28,8 +26,17 @@ class IfGreaterJump(val rhs1: CompileTimeValue, val rhs2: CompileTimeValue, labe
         return listOf(this)
     }
 
-    override fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, String>, destLabel: String) {
-        builder.appendLine("cmp", rhs1.text(variableAssignment), rhs2.text(variableAssignment))
+    override fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, MemoryLocation>, destLabel: String) {
+        val firstOperand = rhs1.value(variableAssignment)
+        val secondOperand = rhs2.value(variableAssignment)
+        if (firstOperand is InStack && secondOperand is InStack) {
+            // TODO get temp register
+            val tempRegister = "r15"
+            builder.appendLine("mov", tempRegister,"$secondOperand")
+            builder.appendLine("cmp", "$firstOperand" , tempRegister)
+        } else {
+            builder.appendLine("cmp", "$firstOperand" ,"$secondOperand")
+        }
         builder.appendLine("jg", destLabel)
     }
 }

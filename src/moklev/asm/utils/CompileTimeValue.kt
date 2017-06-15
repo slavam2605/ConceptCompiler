@@ -4,13 +4,31 @@ package moklev.asm.utils
  * @author Moklev Vyacheslav
  */
 sealed class CompileTimeValue {
-    fun text(variableAssignment: Map<String, String>): String {
+    fun value(variableAssignment: Map<String, MemoryLocation>): CompileTimeValue {
         return when (this) {
             is Variable -> variableAssignment[toString()]!!
-            is IntConst -> "$value"
-            else -> error("Not supported: $javaClass")
+            else -> this
         }
     }
+}
+
+/**
+ * Static location of variable in memory
+ */
+sealed class MemoryLocation : CompileTimeValue()
+
+/**
+ * Location of variable in integer register with name [register]
+ */
+class InRegister(val register: String) : MemoryLocation() {
+    override fun toString(): String = register
+}
+
+/**
+ * Location of variable on stack in [rbp - [offset]]
+ */
+class InStack(val offset: Int) : MemoryLocation() {
+    override fun toString(): String = "[rbp - $offset]"
 }
 
 class Variable(val name: String) : CompileTimeValue() {
@@ -42,13 +60,17 @@ class Variable(val name: String) : CompileTimeValue() {
 
 }
 
-class IntConst(val value: Int) : CompileTimeValue() {
-    override fun toString() = "$value"
+class IntConst(val value: Int) : MemoryLocation() {
+    override fun toString(): String = "$value"
 }
 
-class FloatConst(val value: Float) : CompileTimeValue()
+class FloatConst(val value: Float) : MemoryLocation() {
+    override fun toString(): String = "$value"
+}
 
-class DoubleConst(val value: Double) : CompileTimeValue()
+class DoubleConst(val value: Double) : MemoryLocation() {
+    override fun toString(): String = "$value"
+}
 
 object Undefined : CompileTimeValue() {
     override fun toString() = "[undefined]"

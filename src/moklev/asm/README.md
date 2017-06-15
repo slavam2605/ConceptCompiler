@@ -78,7 +78,7 @@ So `phi` instruction can take even values from future (`a.2` is declared after
 preceded with other instructions (basic block must have an optional prefix of
 `phi` instructions and no `phi` instructions inside). 
 
-In this part of text you can ask -- "is it your own attempt to implement LLVM"? Yes, it is.
+In this part of value you can ask -- "is it your own attempt to implement LLVM"? Yes, it is.
 
 Instructions
 ------------
