@@ -4,6 +4,7 @@ import moklev.asm.compiler.SSATransformer.Block
 import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.utils.Variable
 import java.util.*
+import kotlin.collections.HashSet
 
 /**
  * @author Moklev Vyacheslav
@@ -88,12 +89,9 @@ object RegisterAllocation {
                 val variable = it
                 val isDeadInBlock = block.nextBlocks.all { variable !in liveVariables[it.label]!! }
                 variable to LiveRange(
-                        if (definedVariables[block.label]!!.contains(variable))
-                            block.instructions.indexOfFirst {
-                                it is AssignInstruction && it.lhs.toString() == variable
-                            }
-                        else
-                            0,
+                        block.instructions.indexOfFirst {
+                            it is AssignInstruction && it.lhs.toString() == variable
+                        }.let { if (it == -1) 0 else it },
                         if (isDeadInBlock)
                             block.instructions.indexOfLast {
                                 it.usedValues.any { it is Variable && it.toString() == variable }
@@ -137,6 +135,8 @@ object RegisterAllocation {
     }
 
     private infix fun LiveRange.intersects(b: LiveRange): Boolean {
+        if (firstIndex == lastIndex || b.firstIndex == b.lastIndex)
+            return false
         return firstIndex in b.firstIndex..(b.lastIndex - 1) ||
                 b.firstIndex in firstIndex..(lastIndex - 1)
     }
@@ -166,10 +166,26 @@ object RegisterAllocation {
             }
         }
         val result = colorGraph(nbColors, nbNodes, matrix)
-        for (i in 0..nbNodes - 1) {
-            println("$i> %5s: ${result[i]}".format(indexToNode[i]))
+        val indexToColor = HashMap<Int, String>()
+        val remainingColors = HashSet(colors)
+        for ((variable, color) in initialColoring) {
+            val nodeIndex = nodeToIndex[variable]!!
+            indexToColor[result[nodeIndex]] = color
+            remainingColors.remove(color)
         }
-        return emptyMap()
+        for (i in 0..nbColors - 1) {
+            if (indexToColor[i] == null) {
+                val color = remainingColors.first()
+                indexToColor[i] = color
+                remainingColors.remove(color)
+            }
+        }
+        return result
+                .asSequence()
+                .mapIndexed { i, colorIndex ->
+                    indexToNode[i]!! to indexToColor[colorIndex]!!
+                }
+                .toMap()
     }
 
     private fun colorGraph(nbColors: Int, nbNodes: Int, graph: Array<Array<Boolean>>): Array<Int> {

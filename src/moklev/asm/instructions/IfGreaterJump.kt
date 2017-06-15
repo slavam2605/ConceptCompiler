@@ -5,6 +5,7 @@ import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.CompileTimeValue
 import moklev.asm.utils.IntConst
 import moklev.asm.utils.Variable
+import moklev.utils.ASMBuilder
 
 /**
  * @author Vyacheslav Moklev
@@ -25,5 +26,10 @@ class IfGreaterJump(val rhs1: CompileTimeValue, val rhs2: CompileTimeValue, labe
                 return emptyList()
         }
         return listOf(this)
+    }
+
+    override fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, String>, destLabel: String) {
+        builder.appendLine("cmp", rhs1.text(variableAssignment), rhs2.text(variableAssignment))
+        builder.appendLine("jg", destLabel)
     }
 }

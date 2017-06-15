@@ -1,10 +1,12 @@
 package moklev.asm.compiler
 
 import moklev.asm.instructions.Assign
+import moklev.asm.instructions.Jump
 import moklev.asm.interfaces.*
 import moklev.asm.utils.CompileTimeValue
 import moklev.asm.utils.Undefined
 import moklev.asm.utils.Variable
+import moklev.utils.ASMBuilder
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
@@ -29,6 +31,23 @@ object SSATransformer {
 
         override fun toString(): String {
             return "Block[$label]"
+        }
+
+        fun compile(
+                builder: ASMBuilder,
+                blocks: Map<String, Block>,
+                variableAssignment: Map<String, String>,
+                nextBlockLabel: String?
+        ) { 
+            builder.appendLine("$label:")
+            instructions
+                    .asSequence()
+                    .filterIndexed { index, instruction ->
+                        index != instructions.size - 1
+                                || instruction !is Jump
+                                || instruction.label != nextBlockLabel
+                    }
+                    .forEach { it.compile(builder, blocks, variableAssignment, label) }
         }
     }
 
