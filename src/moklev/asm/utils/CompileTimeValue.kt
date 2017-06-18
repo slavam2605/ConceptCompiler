@@ -3,34 +3,28 @@ package moklev.asm.utils
 /**
  * @author Moklev Vyacheslav
  */
+
+/**
+ * Representation of static value. Could be valid for IR (Concept-ASM)
+ * or for assembly ([StaticAssemblyValue])
+ */
 sealed class CompileTimeValue {
-    fun value(variableAssignment: Map<String, MemoryLocation>): CompileTimeValue {
+    /**
+     * Transform IR representation to assembly representation (based on variable assignment
+     * from register allocation)
+     */
+    fun value(variableAssignment: Map<String, StaticAssemblyValue>): StaticAssemblyValue? {
         return when (this) {
-            is Variable -> variableAssignment[toString()]!!
-            else -> this
+            is Variable -> variableAssignment[toString()]
+            is StaticAssemblyValue -> this
+            else -> error("Not supported: $javaClass")
         }
     }
 }
 
 /**
- * Static location of variable in memory
+ * Variable in the IR (Concept-ASM)
  */
-sealed class MemoryLocation : CompileTimeValue()
-
-/**
- * Location of variable in integer register with name [register]
- */
-class InRegister(val register: String) : MemoryLocation() {
-    override fun toString(): String = register
-}
-
-/**
- * Location of variable on stack in [rbp - [offset]]
- */
-class InStack(val offset: Int) : MemoryLocation() {
-    override fun toString(): String = "[rbp - $offset]"
-}
-
 class Variable(val name: String) : CompileTimeValue() {
     var version: Int = 0
 
@@ -60,18 +54,120 @@ class Variable(val name: String) : CompileTimeValue() {
 
 }
 
-class IntConst(val value: Int) : MemoryLocation() {
-    override fun toString(): String = "$value"
-}
-
-class FloatConst(val value: Float) : MemoryLocation() {
-    override fun toString(): String = "$value"
-}
-
-class DoubleConst(val value: Double) : MemoryLocation() {
-    override fun toString(): String = "$value"
-}
-
+/**
+ * Undefined value, used in intermediate compilation steps.
+ * Should not occur in final code
+ */
 object Undefined : CompileTimeValue() {
     override fun toString() = "[undefined]"
+    
+    override fun equals(other: Any?): Boolean {
+        return other is Undefined
+    }
+}
+
+/**
+ * Representation of static value in assembly
+ */
+sealed class StaticAssemblyValue : CompileTimeValue()
+
+/**
+ * Location of variable in integer register with name [register]
+ */
+class InRegister(val register: String) : StaticAssemblyValue() {
+    override fun toString(): String = register
+    
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other?.javaClass != javaClass) return false
+
+        other as InRegister
+
+        return register == other.register
+    }
+
+    override fun hashCode(): Int {
+        return register.hashCode()
+    }
+}
+
+/**
+ * Location of variable on stack in [rbp - [offset]]
+ */
+class InStack(val offset: Int) : StaticAssemblyValue() {
+    override fun toString(): String = "[rbp - $offset]"
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other?.javaClass != javaClass) return false
+
+        other as InStack
+
+        return offset == other.offset
+
+    }
+
+    override fun hashCode(): Int {
+        return offset
+    }
+}
+
+/**
+ * Static integer constant value
+ */
+class IntConst(val value: Int) : StaticAssemblyValue() {
+    override fun toString(): String = "$value"
+    
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other?.javaClass != javaClass) return false
+
+        other as IntConst
+
+        return value == other.value
+    }
+
+    override fun hashCode(): Int {
+        return value
+    }
+}
+
+/**
+ * Static float constant value
+ */
+class FloatConst(val value: Float) : StaticAssemblyValue() {
+    override fun toString(): String = "$value"
+    
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other?.javaClass != javaClass) return false
+
+        other as FloatConst
+
+        return value == other.value
+    }
+
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
+}
+
+/**
+ * Static double constant value
+ */
+class DoubleConst(val value: Double) : StaticAssemblyValue() {
+    override fun toString(): String = "$value"
+    
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other?.javaClass != javaClass) return false
+
+        other as DoubleConst
+
+        return value == other.value
+    }
+
+    override fun hashCode(): Int {
+        return value.hashCode()
+    }
 }

@@ -6,7 +6,7 @@ import moklev.utils.ASMBuilder
 /**
  * @author Moklev Vyacheslav
  */
-object ConceptASMCompiler {
+object ConceptASMCompiler {    
     fun <A: Appendable> compileTo(dest: A, function: ASMFunction): A {
         dest.appendLine("global ${function.name}")
         dest.appendLine("${function.name}:")
@@ -14,13 +14,28 @@ object ConceptASMCompiler {
         val blocks = /*SSATransformer.performOptimizations*/(
                 SSATransformer.transform(function.instructions)
         )
+        
+        for (block in blocks) {
+            println("${block.label}:")
+            for (instruction in block.instructions) {
+                println("$instruction")
+            }
+        }
+        
         val liveRanges = RegisterAllocation.detectLiveRange(blocks)
         val conflictGraph = RegisterAllocation.buildConflictGraph(liveRanges)
-        val variableAssignment = RegisterAllocation.colorGraph(
-                setOf("rax", "rcx"), // TODO normal registers
-                emptyMap(),          // TODO initial coloring
+        val commonAssignment = RegisterAllocation.colorGraph(
+                setOf("rax", "rbx", "rcx", "rdx", "r8", "r9", "r10", "r11"), // TODO normal registers
+                emptyMap(), // TODO initial coloring
                 conflictGraph
         )
+
+        println(commonAssignment)
+        
+        val variableAssignment = blocks
+                .asSequence()
+                .map { it.label to commonAssignment }
+                .toMap()
         val builder = ASMBuilder()
         for (i in 0..blocks.size - 1) {
             val block = blocks[i]

@@ -26,12 +26,13 @@ class IfGreaterJump(val rhs1: CompileTimeValue, val rhs2: CompileTimeValue, labe
         return listOf(this)
     }
 
-    override fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, MemoryLocation>, destLabel: String) {
+    override fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>, destLabel: String) {
         val firstOperand = rhs1.value(variableAssignment)
         val secondOperand = rhs2.value(variableAssignment)
         if (firstOperand is InStack && secondOperand is InStack) {
             // TODO get temp register
             val tempRegister = "r15"
+            // TODO replace to compileAssign
             builder.appendLine("mov", tempRegister,"$secondOperand")
             builder.appendLine("cmp", "$firstOperand" , tempRegister)
         } else {

@@ -2,9 +2,10 @@ package moklev.asm.compiler
 
 import moklev.asm.compiler.SSATransformer.Block
 import moklev.asm.interfaces.AssignInstruction
+import moklev.asm.interfaces.Phi
 import moklev.asm.utils.InRegister
 import moklev.asm.utils.InStack
-import moklev.asm.utils.MemoryLocation
+import moklev.asm.utils.StaticAssemblyValue
 import moklev.asm.utils.Variable
 import java.util.*
 import kotlin.collections.HashSet
@@ -15,7 +16,7 @@ import kotlin.collections.HashSet
 object RegisterAllocation {
     data class LiveRange(val firstIndex: Int, val lastIndex: Int, val isDeadInBlock: Boolean)
     data class Graph(val nodes: Set<String>, val edges: Map<String, Set<String>>)
-    
+
     fun detectLiveRange(blocks: List<Block>): List<Pair<Block, Map<String, LiveRange>>> {
         val blockNumber = HashMap<String, Int>()
         blocks.forEachIndexed { i, block ->
@@ -43,6 +44,7 @@ object RegisterAllocation {
         for (block in blocks) {
             val vars = HashSet<String>()
             for (instruction in block.instructions) {
+                // TODO decide what to do with variables occur only as an rhs of Phi instruction
                 vars.addAll(instruction.usedValues
                         .asSequence()
                         .filterIsInstance<Variable>()
@@ -138,13 +140,11 @@ object RegisterAllocation {
     }
 
     private infix fun LiveRange.intersects(b: LiveRange): Boolean {
-        if (firstIndex == lastIndex || b.firstIndex == b.lastIndex)
-            return false
         return firstIndex in b.firstIndex..(b.lastIndex - 1) ||
                 b.firstIndex in firstIndex..(lastIndex - 1)
     }
 
-    fun colorGraph(colors: Set<String>, initialColoring: Map<String, String>, graph: Graph): Map<String, MemoryLocation> {
+    fun colorGraph(colors: Set<String>, initialColoring: Map<String, String>, graph: Graph): Map<String, StaticAssemblyValue> {
         val nbColors = colors.size
         val nbNodes = graph.nodes.size
         val matrix = Array(nbNodes) {
@@ -188,7 +188,7 @@ object RegisterAllocation {
                 .mapIndexed { i, colorIndex ->
                     indexToNode[i]!! to if (colorIndex < 0)
                         InStack(-colorIndex)
-                    else 
+                    else
                         InRegister(indexToColor[colorIndex]!!)
                 }
                 .toMap()
@@ -203,7 +203,7 @@ object RegisterAllocation {
         while (dropNodes.size < nbNodes) {
             val dropNode = (0..nbNodes - 1)
                     .filter { !isDropNode[it] && degrees[it] < nbColors }
-                    .maxBy { degrees[it] } 
+                    .maxBy { degrees[it] }
                     ?: error("No node with degree less than $nbColors (nbColors)")
             isDropNode[dropNode] = true
             dropNodes.add(dropNode)
@@ -227,6 +227,7 @@ object RegisterAllocation {
             }
             isDropNode[node] = false
         }
-        return colors
+//        return colors
+        return Array(nbNodes) { it % nbColors }
     }
 }

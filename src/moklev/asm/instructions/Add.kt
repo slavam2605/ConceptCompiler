@@ -4,7 +4,7 @@ import moklev.asm.interfaces.BinaryInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.CompileTimeValue
 import moklev.asm.utils.IntConst
-import moklev.asm.utils.MemoryLocation
+import moklev.asm.utils.StaticAssemblyValue
 import moklev.asm.utils.Variable
 import moklev.utils.ASMBuilder
 
@@ -30,7 +30,7 @@ class Add(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
         return listOf(this)
     }
 
-    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, MemoryLocation>) {
+    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {
         defaultCompile(builder, variableAssignment, "add")
     }
 }
