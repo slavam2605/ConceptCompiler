@@ -1,5 +1,7 @@
 package moklev.asm.interfaces
 
+import moklev.asm.compiler.IntArgumentsAssignment
+import moklev.asm.compiler.RegisterAllocation
 import moklev.asm.compiler.SSATransformer
 import moklev.asm.instructions.Assign
 import moklev.asm.utils.*
@@ -43,7 +45,9 @@ sealed class Instruction {
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String
+            currentBlockLabel: String,
+            liveRange: Map<String, RegisterAllocation.LiveRange>,
+            indexInBlock: Int
     )
 }
 
@@ -58,9 +62,9 @@ abstract class AssignInstruction(val lhs: Variable) : Instruction() {
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String
+            currentBlockLabel: String, liveRange: Map<String, RegisterAllocation.LiveRange>, indexInBlock: Int
     ) {
-        val localAssignment = variableAssignment[currentBlockLabel]!! 
+        val localAssignment = variableAssignment[currentBlockLabel]!!
         if (localAssignment[lhs.toString()] != null) {
             compile(builder, localAssignment)
         }
@@ -104,17 +108,17 @@ abstract class UnaryInstruction(lhs: Variable, val rhs1: CompileTimeValue) : Ass
  */
 abstract class BranchInstruction(val label: String) : Instruction() {
     abstract fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>, destLabel: String)
-    
+
     override fun compile(
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String
+            currentBlockLabel: String, liveRange: Map<String, RegisterAllocation.LiveRange>, indexInBlock: Int
     ) {
         // TODO properly handle reassignment between blocks
         val localAssignment = variableAssignment[currentBlockLabel]!!
         val nextBlockAssignment = variableAssignment[label]!!
-        
+
         val targetBlock = blocks[label]!!
         val jointList = targetBlock.instructions
                 .asSequence()
@@ -132,7 +136,7 @@ abstract class BranchInstruction(val label: String) : Instruction() {
                 jointList.add(assignment to newAssignment)
             }
         }
-        
+
         if (jointList.isEmpty()) {
             compileBranch(builder, localAssignment, label)
         } else {
@@ -141,20 +145,36 @@ abstract class BranchInstruction(val label: String) : Instruction() {
             compileBranch(builder, localAssignment, tempLabel)
             builder.appendLine("jmp", afterLabel)
             builder.appendLine("$tempLabel:")
-            
+
             compileReassignment(builder, jointList)
-            
+
             builder.appendLine("jmp", label)
             builder.appendLine("$afterLabel:")
         }
     }
 }
 
-class Call(val funcName: String, val args: List<CompileTimeValue>) : Instruction() {
+/**
+ * Base class for instructions that does not directly modify their arguments
+ */
+abstract class ReadonlyInstruction : Instruction()
+
+/**
+ * Call of function (subroutine)
+ */
+class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : Instruction() {
+    private val callerToSave = listOf(
+            "rax", "rcx", "rdx",
+            "rdi", "rsi", "rsp",
+            "r8", "r9", "r10", "r11"
+    ).map { InRegister(it) }
+
     override fun toString() = "call $funcName(${args.joinToString()})"
-    override val usedValues = args
+
+    override val usedValues = args.map { it.second }
+
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
-        val newArgs = args.map { if (it == variable) value else it }
+        val newArgs = args.map { it.first to if (it.second == variable) value else it.second }
         return Call(funcName, newArgs)
     }
 
@@ -164,18 +184,45 @@ class Call(val funcName: String, val args: List<CompileTimeValue>) : Instruction
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String
+            currentBlockLabel: String, 
+            liveRange: Map<String, RegisterAllocation.LiveRange>, 
+            indexInBlock: Int
     ) {
-        // TODO implement
-        builder.appendLine("not_implemented::call${args.map { 
-            if (it is Variable) 
-                variableAssignment[currentBlockLabel]!![it.toString()].toString()
-            else
-                it.toString()
-        }}")
+        val localAssignment = variableAssignment[currentBlockLabel]!!
+        val registersToSave = liveRange
+                .asSequence()
+                .filter { indexInBlock >= it.value.firstIndex && indexInBlock < it.value.lastIndex }
+                .map { localAssignment[it.key]!! }
+                .filterIsInstance<InRegister>()
+                .filter { it in callerToSave }
+                .toList()
+        
+        for (register in registersToSave) {
+            compilePush(builder, register)
+        }
+        
+        val intArguments = args
+                .asSequence()
+                .filter { it.first == Type.INT }
+                .map { it.second }
+        
+        intArguments.forEachIndexed { i, arg ->
+            compileAssign(builder, IntArgumentsAssignment[i], arg.value(localAssignment)!!)
+        }
+        
+        // TODO align stack to 16 bytes
+        
+        builder.appendLine("call", funcName)
+        
+        for (register in registersToSave.asReversed()) {
+            compilePop(builder, register)
+        }
     }
 }
 
+/**
+ * Actually not an instruction, just label to jump on
+ */
 class Label(val name: String) : Instruction() {
     override fun toString() = "$name:"
     override val usedValues = emptyList<CompileTimeValue>()
@@ -185,10 +232,15 @@ class Label(val name: String) : Instruction() {
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String
-    ) {}
+            currentBlockLabel: String, liveRange: Map<String, RegisterAllocation.LiveRange>, indexInBlock: Int
+    ) {
+    }
 }
 
+/**
+ * Phi node of SSA graph. Controls rules of merging variable value from
+ * multiple incoming blocks
+ */
 class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : AssignInstruction(lhs) {
     override fun toString(): String {
         return "$lhs = phi ${pairs.joinToString { "[${it.first}, ${it.second}]" }}"
@@ -214,8 +266,47 @@ class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : Assi
             return emptyList()
         if (pairs.size == 1)
             return listOf(Assign(lhs, pairs[0].second))
+        if (pairs.all { it.second == pairs[0].second })
+            return listOf(Assign(lhs, pairs[0].second))
         return listOf(this)
     }
 
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {}
+}
+
+/**
+ * Internal instruction that marks [lhs] as externally initialized value
+ */
+class ExternalAssign(lhs: Variable) : AssignInstruction(lhs) {
+    override val usedValues: List<CompileTimeValue> = emptyList()
+
+    override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
+    
+    override fun simplify(): List<Instruction> = listOf(this)
+
+    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {}
+
+    override fun toString(): String = "$lhs = [externally assigned]"
+}
+
+/**
+ * Instruction with no arguments and special semantics like `ret` or `leave`
+ */
+class NoArgumentsInstruction(val name: String) : Instruction() {
+    override val usedValues: List<CompileTimeValue> = listOf()
+
+    override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
+
+    override fun simplify(): List<Instruction> = listOf(this)
+
+    override fun compile(
+            builder: ASMBuilder, 
+            blocks: Map<String, SSATransformer.Block>, 
+            variableAssignment: VariableAssignment, 
+            currentBlockLabel: String, 
+            liveRange: Map<String, RegisterAllocation.LiveRange>, 
+            indexInBlock: Int
+    ) {
+        builder.appendLine(name)
+    }
 }

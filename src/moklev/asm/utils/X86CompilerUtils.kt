@@ -67,5 +67,22 @@ fun compileReassignment(builder: ASMBuilder, assignList: List<Pair<StaticAssembl
             }
         }
     }
-    
+}
+
+fun compilePush(builder: ASMBuilder, value: StaticAssemblyValue) {
+    when (value) {
+        is InRegister -> {
+            builder.appendLine("push", value.toString())
+        }
+        else -> NotImplementedError()
+    }
+}
+
+fun compilePop(builder: ASMBuilder, value: StaticAssemblyValue) {
+    when (value) {
+        is InRegister -> {
+            builder.appendLine("pop", value.toString())
+        }
+        else -> NotImplementedError()
+    }
 }

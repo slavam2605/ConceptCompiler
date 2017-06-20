@@ -1,14 +1,12 @@
-import moklev.asm.compiler.ConceptASMCompiler
-import moklev.asm.compiler.RegisterAllocation
-import moklev.asm.compiler.SSATransformer
-import moklev.asm.instructions.Add
-import moklev.asm.instructions.Assign
-import moklev.asm.instructions.IfGreaterJump
-import moklev.asm.instructions.Jump
+import moklev.asm.compiler.compile
+import moklev.asm.instructions.*
 import moklev.asm.interfaces.Call
 import moklev.asm.interfaces.Label
-import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMFunction
+import moklev.asm.utils.IntConst
+import moklev.asm.utils.Type
+import moklev.asm.utils.Variable
+import java.io.PrintWriter
 
 /**
  * @author Moklev Vyacheslav
@@ -16,21 +14,33 @@ import moklev.utils.ASMBuilder
 fun main(args: Array<String>) {
     val code = listOf(
             Label("L0"),
-            Assign(Variable("x"), IntConst(1)),
-            IfGreaterJump(Variable("x"), IntConst(1), "L1"),
-            Jump("L2"),
+            Add(Variable("n"), Variable("n"), IntConst(1)),
+            Assign(Variable("acc"), IntConst(0)),
+            Assign(Variable("acc1"), IntConst(0)),
+            Assign(Variable("i"), IntConst(1)),
+            Jump("L1"),
             Label("L1"),
-            Assign(Variable("x"), IntConst(42)),
+            IfGreaterJump(Variable("n"), Variable("i"), "L2"),
             Jump("L3"),
             Label("L2"),
-            Assign(Variable("x"), IntConst(69)),
-            Jump("L3"),
-            Label("L3"),    
-            Call("f", listOf(Variable("x")))
+            Add(Variable("acc"), Variable("acc"), Variable("i")),
+            Add(Variable("i"), Variable("i"), IntConst(1)),
+            Jump("L1"),
+            Label("L3"),
+            Call("printInt", listOf(Type.INT to Variable("acc"))),
+            Return(Type.INT, Variable("acc")),
+            Return(Type.INT, Variable("acc1"))
     )
 
-    println(ConceptASMCompiler.compile(ASMFunction("bar", emptyList(), code)))
-    
+    val compiledCode = ASMFunction("bar", listOf(Type.INT to "n"), code).compile()
+    println("\n========== Compiled code ==========\n")
+    println(compiledCode)
+    with(PrintWriter("C:\\Users\\slava\\yasm_sse\\file.asm")) {
+        println("extern printInt")
+        println(compiledCode)
+        close()
+    }
+
 //    val builder = ASMBuilder()
 //    compileReassignment(builder, listOf(
 //            InRegister("r1") to InRegister("r2"),

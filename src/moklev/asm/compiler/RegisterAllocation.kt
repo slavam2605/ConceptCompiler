@@ -28,11 +28,13 @@ object RegisterAllocation {
             }
         }
         blocks.forEachIndexed { i, block ->
+            println("${block.label} => ${block.nextBlocks.map { it.label }}")
             for (otherBlock in block.nextBlocks) {
                 val j = blockNumber[otherBlock.label]!!
                 achievable[i][j] = true
             }
         }
+        
         for (k in 0..blocks.size - 1) {
             for (i in 0..blocks.size - 1) {
                 for (j in 0..blocks.size - 1) {
@@ -40,6 +42,7 @@ object RegisterAllocation {
                 }
             }
         }
+        
         val usedVariables = HashMap<String, MutableSet<String>>()
         for (block in blocks) {
             val vars = HashSet<String>()
@@ -72,6 +75,7 @@ object RegisterAllocation {
         for (i in 0..blocks.size - 1) {
             for (j in 0..blocks.size - 1) {
                 if (achievable[i][j]) {
+//                    println("Achievable: ${blocks[i].label} => ${blocks[j].label}")
                     definedVariables[blocks[j].label]?.addAll(definedVariables[blocks[i].label] ?: emptySet())
                 }
             }
@@ -84,9 +88,9 @@ object RegisterAllocation {
             liveVariables[block.label] = used intersect defined
         }
 
-        println(usedVariables)
-        println(definedVariables)
-        println(liveVariables)
+        println("usedVariables = $usedVariables")
+        println("definedVariables = $definedVariables")
+        println("liveVariables = $liveVariables")
 
         return blocks.map {
             val block = it
@@ -144,7 +148,7 @@ object RegisterAllocation {
                 b.firstIndex in firstIndex..(lastIndex - 1)
     }
 
-    fun colorGraph(colors: Set<String>, initialColoring: Map<String, String>, graph: Graph): Map<String, StaticAssemblyValue> {
+    fun colorGraph(colors: Set<InRegister>, initialColoring: Map<String, StaticAssemblyValue>, graph: Graph): Map<String, StaticAssemblyValue> {
         val nbColors = colors.size
         val nbNodes = graph.nodes.size
         val matrix = Array(nbNodes) {
@@ -169,7 +173,7 @@ object RegisterAllocation {
             }
         }
         val result = colorGraph(nbColors, nbNodes, matrix)
-        val indexToColor = HashMap<Int, String>()
+        val indexToColor = HashMap<Int, StaticAssemblyValue>()
         val remainingColors = HashSet(colors)
         for ((variable, color) in initialColoring) {
             val nodeIndex = nodeToIndex[variable]!!
@@ -189,7 +193,7 @@ object RegisterAllocation {
                     indexToNode[i]!! to if (colorIndex < 0)
                         InStack(-colorIndex)
                     else
-                        InRegister(indexToColor[colorIndex]!!)
+                        indexToColor[colorIndex]!!
                 }
                 .toMap()
     }
@@ -227,7 +231,6 @@ object RegisterAllocation {
             }
             isDropNode[node] = false
         }
-//        return colors
-        return Array(nbNodes) { it % nbColors }
+        return colors
     }
 }

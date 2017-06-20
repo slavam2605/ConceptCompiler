@@ -28,27 +28,43 @@ object SSATransformer {
         }
 
         override fun toString(): String {
-            return "Block[$label]"
+            return "$label:\n${instructions.joinToString(separator = "") { "$it\n" }}"
         }
 
         fun compile(
                 builder: ASMBuilder,
                 blocks: Map<String, Block>,
                 variableAssignment: VariableAssignment,
-                nextBlockLabel: String?
-        ) { 
+                nextBlockLabel: String?,
+                liveRanges: Map<String, Map<String, RegisterAllocation.LiveRange>>
+        ) {
             // TODO handle nextBlockLabel to avoid needless last jump to adjacent block
+            val localLiveRange = liveRanges[label]!!
             builder.appendLine("$label:")
-            instructions.forEach { 
-                it.compile(builder, blocks, variableAssignment, label) 
+            instructions.forEachIndexed { i, instruction -> 
+                instruction.compile(builder, blocks, variableAssignment, label, localLiveRange, i)
             }
         }
     }
 
-    fun transform(instructions: List<Instruction>): List<Block> {
+    fun transform(instructions: List<Instruction>, functionArguments: List<String>): List<Block> {
         val blocks = extractBlocks(instructions)
+        val startBlock = Block("func_start", ArrayDeque())
+        for (argument in functionArguments) {
+            startBlock.instructions.add(ExternalAssign(Variable(argument)))
+        }
+        startBlock.instructions.add(Jump(blocks[0].label))
+        val endBlock = Block("func_end", ArrayDeque())
+        endBlock.instructions.add(NoArgumentsInstruction("ret"))
+        blocks.add(startBlock)
+        blocks.add(endBlock)
         connectBlocks(blocks)
-        val nonLocalVariables = defineLocalVariables(blocks)
+
+        blocks.forEach { println(it) }
+
+        val nonLocalVariables = defineNonLocalVariables(blocks)
+
+        println(nonLocalVariables)
 
         val lastVersionMap = HashMap<String, Int>()
         for (block in blocks) {
@@ -93,7 +109,7 @@ object SSATransformer {
         return blocks
     }
 
-    private fun defineLocalVariables(blocks: MutableList<Block>): Collection<String> {
+    private fun defineNonLocalVariables(blocks: MutableList<Block>): Collection<String> {
         val variables = LinkedHashSet<String>()
         for (block in blocks) {
             val variablesInBlock =
@@ -102,6 +118,11 @@ object SSATransformer {
                             .flatMap { it.usedValues.asSequence() }
                             .filterIsInstance<Variable>()
                             .map { it.name }
+                            .toMutableList()
+            block.instructions
+                    .asSequence()
+                    .filterIsInstance<AssignInstruction>()
+                    .mapTo(variablesInBlock) { it.lhs.name }
             block.usedVariables.addAll(variablesInBlock)
             variables.addAll(variablesInBlock)
         }
@@ -188,16 +209,18 @@ object SSATransformer {
         return result
     }
 
-    fun recalcBlockConnectivity(blocks: List<Block>): List<Block> {
+    fun recalcBlockConnectivity(blocks: List<Block>, startBlockLabel: String): List<Block> {
         for (block in blocks) {
             block.nextBlocks.clear()
             block.prevBlocks.clear()
         }
         connectBlocks(blocks)
+        
         val queue = ArrayDeque<Block>()
         val seen = LinkedHashSet<String>()
-        queue.add(blocks[0])
-        seen.add(blocks[0].label)
+        val startBlock = blocks.first { it.label == startBlockLabel }
+        queue.add(startBlock)
+        seen.add(startBlock.label)
         val newBlocks = ArrayList<Block>()
         while (queue.isNotEmpty()) {
             val block = queue.poll()
@@ -223,15 +246,30 @@ object SSATransformer {
                 }
             }
         }
+        connectBlocks(newBlocks)
         return newBlocks
     }
 
     fun performOptimizations(blockList: List<Block>): List<Block> {
+        // TODO eliminate unused variables (x = arg1 + arg2, no usage of x later)
         var blocks = blockList
         while (true) {
+            println("\n========= Transformed SSA code ========\n")
+
+            for (block in blocks) {
+                println("${block.label}:")
+                for (instruction in block.instructions) {
+                    println("$instruction")
+                }
+                println()
+            }
+
+            println("\n^^^^^^^^^ End of code ^^^^^^^^^\n")
+            
             var (changed, newBlocks) = SSATransformer.propagateConstants(blocks)
             blocks = SSATransformer.simplifyInstructions(newBlocks)
-            blocks = SSATransformer.recalcBlockConnectivity(blocks)
+            // TODO smarter set start block
+            blocks = SSATransformer.recalcBlockConnectivity(blocks, "func_start")
             changed = changed || !compareInstructionSet(blocks, newBlocks)
             if (!changed) {
                 break
