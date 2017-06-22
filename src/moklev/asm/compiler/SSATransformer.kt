@@ -16,8 +16,8 @@ import kotlin.collections.LinkedHashSet
  */
 object SSATransformer {
     class Block(val label: String, val instructions: ArrayDeque<Instruction>) {
-        val nextBlocks = mutableListOf<Block>()
-        val prevBlocks = mutableListOf<Block>()
+        val nextBlocks = mutableSetOf<Block>()
+        val prevBlocks = mutableSetOf<Block>()
         val usedVariables = HashSet<String>()
         val localVariables = HashSet<String>()
         val lastVariableVersions = HashMap<String, Int>()
@@ -36,12 +36,12 @@ object SSATransformer {
                 blocks: Map<String, Block>,
                 variableAssignment: VariableAssignment,
                 nextBlockLabel: String?,
-                liveRanges: Map<String, Map<String, RegisterAllocation.LiveRange>>
+                liveRanges: Map<String, Map<String, LiveRange>>
         ) {
             // TODO handle nextBlockLabel to avoid needless last jump to adjacent block
             val localLiveRange = liveRanges[label]!!
             builder.appendLine("$label:")
-            instructions.forEachIndexed { i, instruction -> 
+            instructions.forEachIndexed { i, instruction ->
                 instruction.compile(builder, blocks, variableAssignment, label, localLiveRange, i)
             }
         }
@@ -59,6 +59,12 @@ object SSATransformer {
         blocks.add(startBlock)
         blocks.add(endBlock)
         connectBlocks(blocks)
+
+//        println(detectLoops(blocks))
+        
+        for (block in blocks) {
+            println("${block.label} => ${block.nextBlocks.joinToString { it.label }}")
+        }
 
         blocks.forEach { println(it) }
 

@@ -1,7 +1,7 @@
 package moklev.asm.interfaces
 
 import moklev.asm.compiler.IntArgumentsAssignment
-import moklev.asm.compiler.RegisterAllocation
+import moklev.asm.compiler.LiveRange
 import moklev.asm.compiler.SSATransformer
 import moklev.asm.instructions.Assign
 import moklev.asm.utils.*
@@ -46,7 +46,7 @@ sealed class Instruction {
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
             currentBlockLabel: String,
-            liveRange: Map<String, RegisterAllocation.LiveRange>,
+            liveRange: Map<String, LiveRange>,
             indexInBlock: Int
     )
 }
@@ -62,7 +62,7 @@ abstract class AssignInstruction(val lhs: Variable) : Instruction() {
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String, liveRange: Map<String, RegisterAllocation.LiveRange>, indexInBlock: Int
+            currentBlockLabel: String, liveRange: Map<String, LiveRange>, indexInBlock: Int
     ) {
         val localAssignment = variableAssignment[currentBlockLabel]!!
         if (localAssignment[lhs.toString()] != null) {
@@ -113,7 +113,7 @@ abstract class BranchInstruction(val label: String) : Instruction() {
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String, liveRange: Map<String, RegisterAllocation.LiveRange>, indexInBlock: Int
+            currentBlockLabel: String, liveRange: Map<String, LiveRange>, indexInBlock: Int
     ) {
         // TODO properly handle reassignment between blocks
         val localAssignment = variableAssignment[currentBlockLabel]!!
@@ -185,7 +185,7 @@ class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) :
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
             currentBlockLabel: String, 
-            liveRange: Map<String, RegisterAllocation.LiveRange>, 
+            liveRange: Map<String, LiveRange>, 
             indexInBlock: Int
     ) {
         val localAssignment = variableAssignment[currentBlockLabel]!!
@@ -232,7 +232,7 @@ class Label(val name: String) : Instruction() {
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String, liveRange: Map<String, RegisterAllocation.LiveRange>, indexInBlock: Int
+            currentBlockLabel: String, liveRange: Map<String, LiveRange>, indexInBlock: Int
     ) {
     }
 }
@@ -304,9 +304,11 @@ class NoArgumentsInstruction(val name: String) : Instruction() {
             blocks: Map<String, SSATransformer.Block>, 
             variableAssignment: VariableAssignment, 
             currentBlockLabel: String, 
-            liveRange: Map<String, RegisterAllocation.LiveRange>, 
+            liveRange: Map<String, LiveRange>, 
             indexInBlock: Int
     ) {
         builder.appendLine(name)
     }
+
+    override fun toString(): String = name
 }

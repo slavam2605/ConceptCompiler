@@ -8,8 +8,7 @@ import moklev.utils.ASMBuilder
  * @author Moklev Vyacheslav
  */
 
-// TODO layout blocks to minimize amount of jumps
-// TODO advanced search of cycles for each block 
+// TODO layout blocks to minimize amount of jumps 
 // TODO advanced coloring with regard to cycles
 // TODO support allocation in stack
 // TODO properly handle temp registers
@@ -57,8 +56,8 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
 
     println("\n^^^^^^^^^ End of code ^^^^^^^^^\n")
 
-    val liveRanges = RegisterAllocation.detectLiveRange(blocks)
-    val conflictGraph = RegisterAllocation.buildConflictGraph(liveRanges)
+    val liveRanges = detectLiveRange(blocks)
+    val conflictGraph = buildConflictGraph(liveRanges)
 
     val intArguments = arguments
             .asSequence()
@@ -66,7 +65,7 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
             .map { it.second }
             .toList()
 
-    val commonAssignment = RegisterAllocation.colorGraph(
+    val commonAssignment = colorGraph(
             setOf("rax", "rbx", "rcx", "rdx", "r8", "r9", "r10", "r11").map { InRegister(it) }.toSet(), // TODO normal registers
             intArguments.mapIndexed { i, s -> externalNames[s]!! to IntArgumentsAssignment[i] }.toMap(), 
             conflictGraph
