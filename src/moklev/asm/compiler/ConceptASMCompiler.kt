@@ -10,9 +10,9 @@ import moklev.utils.ASMBuilder
 
 // TODO layout blocks to minimize amount of jumps 
 // TODO advanced coloring with regard to cycles
-// TODO support allocation in stack
 // TODO properly handle temp registers
 // TODO support global variables
+// TODO add subsumption of some kind
 
 object IntArgumentsAssignment {
     operator fun get(index: Int): StaticAssemblyValue {
@@ -23,7 +23,7 @@ object IntArgumentsAssignment {
             3 -> InRegister("rcx")
             4 -> InRegister("r8")
             5 -> InRegister("r9")
-            else -> InStack(8 * (index - 5))  
+            else -> InStack(8 * (index - 5))
         }
     }
 }
@@ -65,18 +65,19 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
             .map { it.second }
             .toList()
 
-    val commonAssignment = colorGraph(
-            setOf("rax", "rbx", "rcx", "rdx", "r8", "r9", "r10", "r11").map { InRegister(it) }.toSet(), // TODO normal registers
-            intArguments.mapIndexed { i, s -> externalNames[s]!! to IntArgumentsAssignment[i] }.toMap(), 
-            conflictGraph
+    val variableAssignment = advancedColorGraph(
+            setOf("rax", "rbx", "rcx", "rdx"/*, "r8", "r9", "r10", "r11"*/).map { InRegister(it) }, // TODO normal registers
+            mapOf(
+                    "func_start" to intArguments.mapIndexed { i, s -> externalNames[s]!! to IntArgumentsAssignment[i] }.toMap() // TODO func_start rename or make a constant
+            ),
+            conflictGraph,
+            blocks
     )
 
-    println(commonAssignment)
+    for ((a, b) in variableAssignment) {
+        println("$a: $b")
+    }
 
-    val variableAssignment = blocks
-            .asSequence()
-            .map { it.label to commonAssignment }
-            .toMap()
     val builder = ASMBuilder()
     for (i in 0..blocks.size - 1) {
         val block = blocks[i]

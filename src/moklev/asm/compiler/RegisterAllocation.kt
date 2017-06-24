@@ -2,17 +2,20 @@ package moklev.asm.compiler
 
 import moklev.asm.compiler.SSATransformer.Block
 import moklev.asm.interfaces.AssignInstruction
-import moklev.asm.utils.InRegister
-import moklev.asm.utils.InStack
-import moklev.asm.utils.StaticAssemblyValue
-import moklev.asm.utils.Variable
+import moklev.asm.utils.*
+import moklev.utils.Either
+import java.rmi.registry.Registry
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 import kotlin.collections.HashSet
+import kotlin.collections.LinkedHashSet
 
 /**
  * @author Moklev Vyacheslav
  */
+
+typealias Coloring = Map<String, StaticAssemblyValue>
 
 data class LiveRange(val firstIndex: Int, val lastIndex: Int, val isDeadInBlock: Boolean)
 
@@ -21,11 +24,17 @@ data class Graph(val nodes: Set<String>, val edges: Map<String, Set<String>>)
 sealed class LoopSet {
     class JustBlock(val block: Block) : LoopSet() {
         override fun toString(): String = "B[${block.label}]"
+
+        override fun blocks(): Sequence<Block> = sequenceOf(block)
     }
 
     class Loop(val contents: List<LoopSet>) : LoopSet() {
         override fun toString(): String = "L$contents"
+
+        override fun blocks(): Sequence<Block> = contents.asSequence().flatMap { it.blocks() }
     }
+
+    abstract fun blocks(): Sequence<Block>
 }
 
 fun detectLiveRange(blocks: List<Block>): List<Pair<Block, Map<String, LiveRange>>> {
@@ -158,8 +167,7 @@ private infix fun LiveRange.intersects(b: LiveRange): Boolean {
             b.firstIndex in firstIndex..(lastIndex - 1)
 }
 
-/* TODO private */ fun detectLoops(blocks: List<Block>): List<LoopSet> {
-//    println("Enter: ${blocks.joinToString { it.label }}")
+private fun detectLoops(blocks: List<Block>): List<LoopSet> {
     val achievable = Array(blocks.size) {
         Array(blocks.size) {
             false
@@ -185,14 +193,6 @@ private infix fun LiveRange.intersects(b: LiveRange): Boolean {
         }
     }
 
-//    for (i in 0..blocks.size - 1) {
-//        println("${blocks[i].label} => ${achievable[i].mapIndexedNotNull { j, b ->
-//            if (!b)
-//                return@mapIndexedNotNull null
-//            blocks[j].label
-//        }}")
-//    }
-
     val result = ArrayList<LoopSet>()
     val used = Array(blocks.size) { false }
     blocks.forEachIndexed { i, block ->
@@ -206,10 +206,8 @@ private infix fun LiveRange.intersects(b: LiveRange): Boolean {
                 achievable[it][i] && achievable[i][it]
             }
             // TODO maybe change algorithm to separate loops of kind (((block) block) block)
-//            println(blocks.joinToString { "[" + it.label + " <= " + it.prevBlocks.joinToString { it.label } + "]" })
             val startBlock = blocks.first {
                 inLoop[indexByLabel[it.label]!!] && it.prevBlocks.any {
-//                    indexByLabel[it.label]?.let { !inLoop[it] } ?: true
                     !inLoop[indexByLabel[it.label]!!]
                 }
             }
@@ -219,12 +217,6 @@ private infix fun LiveRange.intersects(b: LiveRange): Boolean {
                 prevBlock.nextBlocks.remove(startBlock)
             }
             startBlock.prevBlocks.clear()
-            println("startBlock: ${startBlock.label}, prevBlocks: ${startBlock.prevBlocks.map { it.label }}, nextBlocks: " +
-                    "${startBlock.nextBlocks.map { it.label }}")
-//            for (block1 in blocks) {
-//                println("${block1.label}, prevBlocks: ${block1.prevBlocks.map { it.label }}, nextBlocks: " +
-//                        "${block1.nextBlocks.map { it.label }}")
-//            }
             result.add(LoopSet.Loop(detectLoops(blocks.filterIndexed {
                 j, _ ->
                 inLoop[j]
@@ -239,17 +231,222 @@ private infix fun LiveRange.intersects(b: LiveRange): Boolean {
             startBlock.prevBlocks.addAll(removedParents)
         }
     }
-//    println("Leave: ${blocks.joinToString { it.label }}")
     return result
 }
 
-fun colorGraph(colors: Set<InRegister>, initialColoring: Map<String, StaticAssemblyValue>, graph: Graph): Map<String, StaticAssemblyValue> {
+/**
+ * Assign a memory location for every variable from
+ * a collection of blocks
+ *
+ * @param colors order preference of colors
+ * @param initialColoring initial mapping from `Block.label` to `(var, color)`
+ * @param conflictGraph conflict graph of variables live ranges
+ * @param blocks collection of blocks to color
+ */
+fun advancedColorGraph(
+        colors: List<InRegister>,
+        initialColoring: Map<String, Coloring>,
+        conflictGraph: Graph,
+        blocks: List<Block>
+): VariableAssignment {
+    val result = HashMap<String, Coloring>()
+    val loopSets = detectLoops(blocks)
+    val globalLoopSet = LoopSet.Loop(loopSets)
+    colorLoopSet(
+            colors,
+            initialColoring,
+            conflictGraph,
+            globalLoopSet,
+            result
+    )
+    return result
+}
+
+private fun colorLoopSet(
+        colors: List<InRegister>,
+        initialColoring: Map<String, Coloring>,
+        conflictGraph: Graph,
+        loopSet: LoopSet,
+        coloredBlocks: MutableMap<String, Coloring>
+) {
+    when (loopSet) {
+        is LoopSet.JustBlock -> {
+            println("IsBlock(${loopSet.block.label})")
+            val coloring = colorBlocks(
+                    colors,
+                    initialColoring,
+                    conflictGraph,
+                    loopSet.blocks().toList(),
+                    coloredBlocks,
+                    failOnStack = false
+            ).right()
+            coloredBlocks[loopSet.block.label] = coloring
+        }
+        is LoopSet.Loop -> {
+            colorBlocks(
+                    colors,
+                    initialColoring,
+                    conflictGraph,
+                    loopSet.blocks().toList(),
+                    coloredBlocks
+            ).map({
+                for (subLoopSet in loopSet.contents) {
+                    colorLoopSet(
+                            colors,
+                            initialColoring,
+                            conflictGraph,
+                            subLoopSet,
+                            coloredBlocks
+                    )
+                }
+            }) {
+                for (block in loopSet.blocks()) {
+                    coloredBlocks[block.label] = it
+                }
+            }
+        }
+    }
+}
+
+private fun colorBlocks(
+        colors: List<InRegister>,
+        initialColoring: Map<String, Coloring>,
+        conflictGraph: Graph,
+        blocks: List<Block>,
+        coloredBlocks: Map<String, Coloring>,
+        failOnStack: Boolean = true
+): Either<Unit, Coloring> {
+    val nbColors = colors.size
+    val nodes = blocks
+            .asSequence()
+            .flatMap { it.usedVariables.asSequence() }
+            .distinct()
+            .toList()
+
+    val startBlock = run {
+        val labelSet = blocks
+                .asSequence()
+                .map { it.label }
+                .toSet()
+        blocks
+                .asSequence()
+                .filter { it.prevBlocks.any { it.label !in labelSet } }
+                .singleOrNull()
+    }
+
+    val nbNodes = nodes.size
+    val matrix = Array(nbNodes) {
+        BooleanArray(nbNodes)
+    }
+    val nodeToIndex = HashMap<String, Int>()
+    val indexToNode = Array<String?>(nbNodes) { null }
+    nodes.forEachIndexed { index, node ->
+        nodeToIndex[node] = index
+        indexToNode[index] = node
+    }
+
+    nodes.forEachIndexed { from, node ->
+        val neighbours = conflictGraph.edges[node]!!
+        for (other in neighbours) {
+            val to = nodeToIndex[other] ?: continue
+            matrix[from][to] = true
+            matrix[to][from] = true
+        }
+    }
+
+    val spillCost = IntArray(nbNodes)
+    for ((_, coloring) in initialColoring) {
+        for ((variable, _) in coloring) {
+            val index = nodeToIndex[variable] ?: continue
+            spillCost[index] = Int.MAX_VALUE
+        }
+    }
+
+    val result = colorGraph(nbColors, nbNodes, matrix, spillCost)
+
+    val indexToColor = HashMap<Int, StaticAssemblyValue>()
+    val remainingColors = LinkedHashSet(colors)
+    for ((_, coloring) in initialColoring) {
+        for ((variable, color) in coloring) {
+            val nodeIndex = nodeToIndex[variable] ?: continue
+            if (indexToColor[result[nodeIndex]] == color)
+                throw IllegalArgumentException("Conflicting initial coloring")
+            indexToColor[result[nodeIndex]] = color
+            remainingColors.remove(color)
+        }
+    }
+
+    val reservedOffsets = HashSet<Int>()
+    val resultColoring = HashMap<String, StaticAssemblyValue>()
+
+    nodes.forEachIndexed { index, node ->
+        fun preferredColor(): StaticAssemblyValue? {
+            var preferredColor: StaticAssemblyValue? = null
+            if (startBlock?.usedVariables?.contains(node) ?: false) {
+                preferredColor = startBlock!!.prevBlocks
+                        .asSequence()
+                        .mapNotNull { coloredBlocks[it.label] }
+                        .mapNotNull { it[node] }
+                        .groupingBy { it }
+                        .eachCount()
+                        .maxBy { it.value }
+                        ?.key
+            }
+            return preferredColor
+        }
+
+
+        val colorIndex = result[index]
+        if (colorIndex < 0) {
+            if (failOnStack)
+                return Either.Left(Unit)
+            val preferredColor = preferredColor() as? InStack
+            if (preferredColor != null) {
+                resultColoring[node] = preferredColor
+                reservedOffsets.add(preferredColor.offset)
+            }
+        } else if (indexToColor[colorIndex] == null) {
+            val preferredColor = preferredColor() as? InRegister
+            if (preferredColor != null) {
+                indexToColor[colorIndex] = preferredColor
+                remainingColors.remove(preferredColor)
+                resultColoring[node] = preferredColor
+            }
+        }
+    }
+
+    println(Arrays.toString(result))
+
+    nodes.forEachIndexed { index, node ->
+        val colorIndex = result[index]
+        if (colorIndex < 0) {
+            if (resultColoring[node] == null) {
+                val offset = (1..nodes.size)
+                        .asSequence()
+                        .map { it * 8 }
+                        .filter { it !in reservedOffsets }
+                        .first()
+                reservedOffsets.add(offset)
+                resultColoring[node] = InStack(offset)
+            }
+        } else if (indexToColor[colorIndex] == null) {
+            val color = remainingColors.first()
+            remainingColors.remove(color)
+            indexToColor[colorIndex] = color
+        }
+        if (colorIndex >= 0) {
+            resultColoring[node] = indexToColor[colorIndex]!!
+        }
+    }
+
+    return Either.Right(resultColoring)
+}
+
+fun colorGraph(colors: Set<InRegister>, initialColoring: Coloring, graph: Graph): Coloring {
     val nbColors = colors.size
     val nbNodes = graph.nodes.size
     val matrix = Array(nbNodes) {
-        Array(nbNodes) {
-            false
-        }
+        BooleanArray(nbNodes)
     }
     val nodeToIndex = HashMap<String, Int>()
     val indexToNode = Array<String?>(nbNodes) { null }
@@ -267,7 +464,7 @@ fun colorGraph(colors: Set<InRegister>, initialColoring: Map<String, StaticAssem
             matrix[to][from] = true
         }
     }
-    val result = colorGraph(nbColors, nbNodes, matrix)
+    val result = colorGraph(nbColors, nbNodes, matrix, IntArray(nbNodes))
     val indexToColor = HashMap<Int, StaticAssemblyValue>()
     val remainingColors = HashSet(colors)
     for ((variable, color) in initialColoring) {
@@ -293,7 +490,7 @@ fun colorGraph(colors: Set<InRegister>, initialColoring: Map<String, StaticAssem
             .toMap()
 }
 
-private fun colorGraph(nbColors: Int, nbNodes: Int, graph: Array<Array<Boolean>>): Array<Int> {
+private fun colorGraph(nbColors: Int, nbNodes: Int, graph: Array<BooleanArray>, spillCost: IntArray): Array<Int> {
     val dropNodes = ArrayList<Int>()
     val degrees = Array(nbNodes) {
         graph[it].count { it }
@@ -301,19 +498,24 @@ private fun colorGraph(nbColors: Int, nbNodes: Int, graph: Array<Array<Boolean>>
     val isDropNode = Array(nbNodes) { false }
     while (dropNodes.size < nbNodes) {
         val dropNode = (0..nbNodes - 1)
+                .asSequence()
                 .filter { !isDropNode[it] && degrees[it] < nbColors }
                 .maxBy { degrees[it] }
-                ?: error("No node with degree less than $nbColors (nbColors)")
+                ?: (0..nbNodes - 1)
+                .asSequence()
+                .minBy { spillCost[it] }!!
         isDropNode[dropNode] = true
         dropNodes.add(dropNode)
         for (i in 0..nbNodes - 1)
             if (graph[dropNode][i])
                 degrees[i] -= 1
     }
-    val colors = Array(nbNodes) { 0 }
+    val colors = Array(nbNodes) { -1 }
+    var inStackCount = 0
     for (node in dropNodes.reversed()) {
         val usedColors = HashSet<Int>()
         (0..nbNodes - 1)
+                .asSequence()
                 .filter { !isDropNode[it] && graph[it][node] }
                 .mapTo(usedColors) {
                     colors[it]
@@ -323,6 +525,10 @@ private fun colorGraph(nbColors: Int, nbNodes: Int, graph: Array<Array<Boolean>>
                 colors[node] = color
                 break
             }
+        }
+        if (colors[node] < 0) {
+            inStackCount++
+            colors[node] = -inStackCount * 8
         }
         isDropNode[node] = false
     }

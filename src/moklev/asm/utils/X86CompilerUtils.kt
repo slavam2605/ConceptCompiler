@@ -14,6 +14,9 @@ fun compileAssign(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAsse
             val tempRegister = "r15"
             builder.appendLine("mov", tempRegister, "$rhs")
             builder.appendLine("mov", "$lhs", tempRegister)
+        } else if (lhs is InStack && rhs !is InRegister) {
+            // TODO must be typed or at least sized
+            builder.appendLine("mov", "qword $lhs", "$rhs")
         } else {
             builder.appendLine("mov", "$lhs", "$rhs")
         }

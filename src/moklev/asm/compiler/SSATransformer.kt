@@ -45,23 +45,37 @@ object SSATransformer {
                 instruction.compile(builder, blocks, variableAssignment, label, localLiveRange, i)
             }
         }
+
+        fun recalcUsedVariables() {
+            usedVariables.clear()
+            instructions
+                    .asSequence()
+                    .flatMap { it.usedValues.asSequence() }
+                    .filterIsInstance<Variable>()
+                    .mapTo(usedVariables) { "$it" }
+            instructions
+                    .asSequence()
+                    .filterIsInstance<AssignInstruction>()
+                    .mapTo(usedVariables) { "${it.lhs}" }
+        }
     }
 
     fun transform(instructions: List<Instruction>, functionArguments: List<String>): List<Block> {
         val blocks = extractBlocks(instructions)
         val startBlock = Block("func_start", ArrayDeque())
+        startBlock.instructions.add(NoArgumentsInstruction("push rbp"))
+        startBlock.instructions.add(NoArgumentsInstruction("mov rbp, rsp"))
         for (argument in functionArguments) {
             startBlock.instructions.add(ExternalAssign(Variable(argument)))
         }
         startBlock.instructions.add(Jump(blocks[0].label))
         val endBlock = Block("func_end", ArrayDeque())
+        endBlock.instructions.add(NoArgumentsInstruction("pop rbp"))
         endBlock.instructions.add(NoArgumentsInstruction("ret"))
         blocks.add(startBlock)
         blocks.add(endBlock)
         connectBlocks(blocks)
 
-//        println(detectLoops(blocks))
-        
         for (block in blocks) {
             println("${block.label} => ${block.nextBlocks.joinToString { it.label }}")
         }
@@ -118,19 +132,8 @@ object SSATransformer {
     private fun defineNonLocalVariables(blocks: MutableList<Block>): Collection<String> {
         val variables = LinkedHashSet<String>()
         for (block in blocks) {
-            val variablesInBlock =
-                    block.instructions
-                            .asSequence()
-                            .flatMap { it.usedValues.asSequence() }
-                            .filterIsInstance<Variable>()
-                            .map { it.name }
-                            .toMutableList()
-            block.instructions
-                    .asSequence()
-                    .filterIsInstance<AssignInstruction>()
-                    .mapTo(variablesInBlock) { it.lhs.name }
-            block.usedVariables.addAll(variablesInBlock)
-            variables.addAll(variablesInBlock)
+            block.recalcUsedVariables()
+            variables.addAll(block.usedVariables)
         }
         val localVariables = HashSet<String>()
         for (variable in variables) {
@@ -186,11 +189,45 @@ object SSATransformer {
                 .flatMap { it.instructions }
                 .filterIsInstance<Assign>()
                 .forEach { assignMap[it.lhs] = it.rhs1 }
+        val rightUsedVariables = HashSet<String>()
+        blocks
+                .asSequence()
+                .flatMap {
+                    it.instructions
+                            .asSequence()
+                            .filter { it !is Phi }
+                }
+                .flatMapTo(rightUsedVariables) {
+                    it.usedValues
+                            .asSequence()
+                            .filterIsInstance<Variable>()
+                            .map { "$it" }
+                }
+        blocks
+                .asSequence()
+                .flatMap {
+                    it.instructions
+                            .asSequence()
+                            .filterIsInstance<Phi>()
+                }
+                .flatMapTo(rightUsedVariables) {
+                    val lhsName = "${it.lhs}"
+                    it.pairs
+                            .asSequence()
+                            .map { it.second }
+                            .filterIsInstance<Variable>()
+                            .map { "$it" }
+                            .filter { it != lhsName }
+                }
+        
         val result = ArrayList<Block>()
         for (block in blocks) {
             val newBlock = Block(block.label, ArrayDeque())
             for (instruction in block.instructions) {
                 if (instruction is Assign && assignMap.containsKey(instruction.lhs)) {
+                    continue
+                }
+                if (instruction is AssignInstruction && "${instruction.lhs}" !in rightUsedVariables) {
                     continue
                 }
                 var newInstruction = instruction
@@ -221,7 +258,7 @@ object SSATransformer {
             block.prevBlocks.clear()
         }
         connectBlocks(blocks)
-        
+
         val queue = ArrayDeque<Block>()
         val seen = LinkedHashSet<String>()
         val startBlock = blocks.first { it.label == startBlockLabel }
@@ -271,7 +308,7 @@ object SSATransformer {
             }
 
             println("\n^^^^^^^^^ End of code ^^^^^^^^^\n")
-            
+
             var (changed, newBlocks) = SSATransformer.propagateConstants(blocks)
             blocks = SSATransformer.simplifyInstructions(newBlocks)
             // TODO smarter set start block
@@ -281,7 +318,8 @@ object SSATransformer {
                 break
             }
         }
-        return blocks.toList()
+        blocks.forEach { it.recalcUsedVariables() }
+        return blocks
     }
 
     private fun compareInstructionSet(blocks: List<SSATransformer.Block>, newBlocks: List<SSATransformer.Block>): Boolean {

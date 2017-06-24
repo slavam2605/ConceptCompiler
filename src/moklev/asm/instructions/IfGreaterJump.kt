@@ -35,6 +35,8 @@ class IfGreaterJump(val rhs1: CompileTimeValue, val rhs2: CompileTimeValue, labe
             // TODO replace to compileAssign
             builder.appendLine("mov", tempRegister,"$secondOperand")
             builder.appendLine("cmp", "$firstOperand" , tempRegister)
+        } else if (firstOperand is InStack && secondOperand !is InRegister) {
+            builder.appendLine("cmp", "qword $firstOperand" ,"$secondOperand")            
         } else {
             builder.appendLine("cmp", "$firstOperand" ,"$secondOperand")
         }
