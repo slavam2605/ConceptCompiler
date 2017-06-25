@@ -76,28 +76,6 @@ abstract class AssignInstruction(val lhs: Variable) : Instruction() {
  */
 abstract class BinaryInstruction(lhs: Variable, val rhs1: CompileTimeValue, val rhs2: CompileTimeValue) : AssignInstruction(lhs) {
     override val usedValues = listOf(rhs1, rhs2)
-
-    fun defaultCompile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>, op: String) {
-        val lhsValue = lhs.value(variableAssignment)!!
-        val rhsValue = rhs1.value(variableAssignment)!!
-        if (lhsValue != rhsValue) {
-            compileAssign(builder, lhsValue, rhsValue)
-        }
-        val target = lhsValue
-        val secondOperand = rhs2.value(variableAssignment)
-        if (target is InStack && secondOperand is InStack) {
-            // TODO get temp register
-            val tempRegister = "r15"
-            builder.appendLine("mov", tempRegister, "$target")
-            builder.appendLine(op, tempRegister, "$secondOperand")
-            builder.appendLine("mov", "$target", tempRegister)
-        } else if (target is InStack && secondOperand !is InRegister) {
-            // TODO must be sized
-            builder.appendLine(op, "qword $target", "$secondOperand")
-        } else {
-            builder.appendLine(op, "$target", "$secondOperand")
-        }
-    }
 }
 
 /**

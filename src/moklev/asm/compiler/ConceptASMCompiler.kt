@@ -8,11 +8,11 @@ import moklev.utils.ASMBuilder
  * @author Moklev Vyacheslav
  */
 
-// TODO layout blocks to minimize amount of jumps 
-// TODO advanced coloring with regard to cycles
+// TODO layout blocks to minimize amount of jumps
 // TODO properly handle temp registers
 // TODO support global variables
 // TODO add subsumption of some kind
+// TODO appropriate spill decisions (loop depth + precolored variables should be able to be spilled) 
 
 object IntArgumentsAssignment {
     operator fun get(index: Int): StaticAssemblyValue {
@@ -65,10 +65,15 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
             .map { it.second }
             .toList()
 
+    println("conflictGraph = $conflictGraph")
+    
     val variableAssignment = advancedColorGraph(
-            setOf("rax", "rbx", "rcx", "rdx"/*, "r8", "r9", "r10", "r11"*/).map { InRegister(it) }, // TODO normal registers
+            setOf("rax", "rbx", "rcx", "rdx", "r8", "r9", "r10", "r11").map { InRegister(it) }, // TODO normal registers
             mapOf(
-                    "func_start" to intArguments.mapIndexed { i, s -> externalNames[s]!! to IntArgumentsAssignment[i] }.toMap() // TODO func_start rename or make a constant
+                        "func_start" to intArguments.mapIndexedNotNull { i, s ->
+                            val name = externalNames[s] ?: return@mapIndexedNotNull null
+                            name to IntArgumentsAssignment[i] 
+                        }.toMap() // TODO func_start rename or make a constant
             ),
             conflictGraph,
             blocks

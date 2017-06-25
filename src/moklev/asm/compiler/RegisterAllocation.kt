@@ -137,7 +137,7 @@ fun buildConflictGraph(liveRanges: List<Pair<Block, Map<String, LiveRange>>>): G
     liveRanges.flatMapTo(nodes) {
         it.second.keys
     }
-
+    
     val edges = HashMap<String, MutableSet<String>>()
     nodes.forEach {
         edges[it] = HashSet()
@@ -283,6 +283,7 @@ private fun colorLoopSet(
             coloredBlocks[loopSet.block.label] = coloring
         }
         is LoopSet.Loop -> {
+            println("IsLoop(${loopSet.blocks().joinToString { it.label }})")
             colorBlocks(
                     colors,
                     initialColoring,
@@ -344,7 +345,7 @@ private fun colorBlocks(
         nodeToIndex[node] = index
         indexToNode[index] = node
     }
-
+    
     nodes.forEachIndexed { from, node ->
         val neighbours = conflictGraph.edges[node]!!
         for (other in neighbours) {
@@ -362,6 +363,7 @@ private fun colorBlocks(
         }
     }
 
+    println("Coloring: ${(0..nbNodes - 1).map { indexToNode[it] }}")
     val result = colorGraph(nbColors, nbNodes, matrix, spillCost)
 
     val indexToColor = HashMap<Int, StaticAssemblyValue>()

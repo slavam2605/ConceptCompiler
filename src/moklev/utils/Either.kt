@@ -29,7 +29,7 @@ sealed class Either<out A, out B> {
     fun right(): B {
         return when (this) {
             is Right -> value
-            else -> throw IllegalStateException("Expected Left, but was $this")
+            else -> throw IllegalStateException("Expected Right, but was $this")
         }
     }
 }

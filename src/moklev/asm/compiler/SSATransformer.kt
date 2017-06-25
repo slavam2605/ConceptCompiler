@@ -221,6 +221,7 @@ object SSATransformer {
                 }
         
         val result = ArrayList<Block>()
+        var eliminated = false
         for (block in blocks) {
             val newBlock = Block(block.label, ArrayDeque())
             for (instruction in block.instructions) {
@@ -228,6 +229,7 @@ object SSATransformer {
                     continue
                 }
                 if (instruction is AssignInstruction && "${instruction.lhs}" !in rightUsedVariables) {
+                    eliminated = true
                     continue
                 }
                 var newInstruction = instruction
@@ -238,7 +240,7 @@ object SSATransformer {
             }
             result.add(newBlock)
         }
-        return assignMap.isNotEmpty() to result
+        return (assignMap.isNotEmpty() || eliminated) to result
     }
 
     fun simplifyInstructions(blocks: List<Block>): List<Block> {
@@ -294,7 +296,6 @@ object SSATransformer {
     }
 
     fun performOptimizations(blockList: List<Block>): List<Block> {
-        // TODO eliminate unused variables (x = arg1 + arg2, no usage of x later)
         var blocks = blockList
         while (true) {
             println("\n========= Transformed SSA code ========\n")
