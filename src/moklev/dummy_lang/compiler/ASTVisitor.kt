@@ -45,13 +45,18 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
 
     fun visitExpression(ctx: DummyLangParser.ExpressionContext): Expression {
         return when (ctx) {
+            is DummyLangParser.TimesDivContext -> visitTimesDiv(ctx)
             is DummyLangParser.PlusMinusContext -> visitPlusMinus(ctx)
             is DummyLangParser.IntConstContext -> visitIntConst(ctx)
             is DummyLangParser.VariableContext -> visitVariable(ctx)
             else -> error("Branch is not supported")
         }
     }
-    
+
+    override fun visitTimesDiv(ctx: DummyLangParser.TimesDivContext): BinaryOp {
+        return BinaryOp(ctx, ctx.op.text, visitExpression(ctx.left), visitExpression(ctx.right))
+    }
+
     override fun visitPlusMinus(ctx: DummyLangParser.PlusMinusContext): BinaryOp {
         return BinaryOp(ctx, ctx.op.text, visitExpression(ctx.left), visitExpression(ctx.right))
     }

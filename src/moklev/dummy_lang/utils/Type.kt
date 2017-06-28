@@ -4,7 +4,9 @@ package moklev.dummy_lang.utils
  * @author Vyacheslav Moklev
  */
 sealed class Type {
-    class PrimitiveType(val typeName: String) : Type()
+    data class PrimitiveType(val typeName: String) : Type() {
+        override fun toString(): String = typeName
+    }
     
     fun toASMType(): moklev.asm.utils.Type {
         return when (this) {

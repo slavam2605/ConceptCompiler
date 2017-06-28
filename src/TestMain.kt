@@ -1,5 +1,6 @@
 import moklev.asm.compiler.compile
 import moklev.dummy_lang.compiler.ASTVisitor
+import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.parser.DummyLangLexer
 import moklev.dummy_lang.parser.DummyLangParser
 import org.antlr.v4.runtime.ANTLRInputStream
@@ -57,9 +58,9 @@ fun main(args: Array<String>) {
         fun keks(a: i64, b: i64): i64 {
             var x: i64;
             var y: i64;
-            x = a + b; 
-            y = x + b; 
-            return x + y;
+            x = a + b;  
+            y = x + b; // y = a + 2b
+            return x * y; // (a + b) * (a + 2b)
         }
     """)
     val parser = DummyLangParser(
@@ -68,12 +69,21 @@ fun main(args: Array<String>) {
             )
     )
     val function = ASTVisitor.visitFunction(parser.function())
-    val compiledCode = function.compile().compile()
+    val state = CompilationState()
+    val conceptAsmCode = function
+            .compile(state)
+    state.errorList.forEach {
+        println(it)
+    }
+    if (state.errorList.size > 0)
+        return
+    val compiledCode = conceptAsmCode.compile()
 
 //    val compiledCode = ASMFunction("bar", listOf(Type.INT to "n"), code).compile()
     println("\n========== Compiled code ==========\n")
     println(compiledCode)
-    with(PrintWriter("C:\\Users\\slava\\yasm_sse\\file.asm")) {
+    with(PrintWriter("compiled\\file.asm")) {
+        println("BITS 64")
         println("extern printInt")
         println(compiledCode)
         close()

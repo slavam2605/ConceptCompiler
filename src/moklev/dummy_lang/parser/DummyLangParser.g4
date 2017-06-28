@@ -27,7 +27,7 @@ expression
 //    |   '-' expression
 //    |   '!' expression
 //    |   '*' expression
-//    |   left=expression op=('*'|'/') right=expression
+    |   left=expression op=('*'|'/') right=expression                           #timesDiv
     |   left=expression op=('+'|'-') right=expression                           #plusMinus
 //    |   left=expression op=('<'|'>'|'=='|'!='|'>='|'<=') right=expression
 //    |   left=expression '&&' left=expression

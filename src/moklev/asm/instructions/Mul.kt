@@ -8,23 +8,15 @@ import moklev.utils.ASMBuilder
 /**
  * @author Moklev Vyacheslav
  */
-class Add(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs, rhs1, rhs2) {
-    override fun toString() = "$lhs = $rhs1 + $rhs2"
+class Mul(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs,  rhs1, rhs2) {
+    override fun toString(): String = "$lhs = $rhs1 * $rhs2"
     
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
-        return Add(lhs, if (rhs1 == variable) value else rhs1, if (rhs2 == variable) value else rhs2)
+        return Mul(lhs, if (rhs1 == variable) value else rhs1, if (rhs2 == variable) value else rhs2)
     }
 
     override fun simplify(): List<Instruction> {
-        if (rhs1 is IntConst && rhs2 is IntConst) {
-            return listOf(Assign(lhs, IntConst(rhs1.value + rhs2.value)))
-        }
-        if (rhs1 is IntConst && rhs1.value == 0) {
-            return listOf(Assign(lhs, rhs2))
-        }
-        if (rhs2 is IntConst && rhs2.value == 0) {
-            return listOf(Assign(lhs, rhs2))
-        }
+        // TODO implement
         return listOf(this)
     }
 
@@ -39,39 +31,39 @@ class Add(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
                 // TODO get temp register
                 val tempRegister = "r15"
                 builder.appendLine("mov", tempRegister, "$lhsValue")
-                builder.appendLine("add", tempRegister, "$rhs2Value")
+                builder.appendLine("imul", tempRegister, "$rhs2Value")
                 builder.appendLine("mov", "$lhsValue", tempRegister)
             } else if (lhsValue is InStack && rhs2Value !is InRegister) {
                 // TODO must be sized
-                builder.appendLine("add", "qword $lhsValue", "$rhs2Value")
+                builder.appendLine("imul", "qword $lhsValue", "$rhs2Value")
             } else {
-                builder.appendLine("add", "$lhsValue", "$rhs2Value")
+                builder.appendLine("imul", "$lhsValue", "$rhs2Value")
             }
         } else if (lhsValue == rhs1Value) {
             if (lhsValue is InStack && rhs2Value is InStack) {
                 // TODO get temp register
                 val tempRegister = "r15"
                 builder.appendLine("mov", tempRegister, "$lhsValue")
-                builder.appendLine("add", tempRegister, "$rhs2Value")
+                builder.appendLine("imul", tempRegister, "$rhs2Value")
                 builder.appendLine("mov", "$lhsValue", tempRegister)
             } else if (lhsValue is InStack && rhs2Value !is InRegister) {
                 // TODO must be sized
-                builder.appendLine("add", "qword $lhsValue", "$rhs2Value")
+                builder.appendLine("imul", "qword $lhsValue", "$rhs2Value")
             } else {
-                builder.appendLine("add", "$lhsValue", "$rhs2Value")
+                builder.appendLine("imul", "$lhsValue", "$rhs2Value")
             }
         } else {
             if (lhsValue is InStack && rhs1Value is InStack) {
                 // TODO get temp register
                 val tempRegister = "r15"
                 builder.appendLine("mov", tempRegister, "$lhsValue")
-                builder.appendLine("add", tempRegister, "$rhs1Value")
+                builder.appendLine("imul", tempRegister, "$rhs1Value")
                 builder.appendLine("mov", "$lhsValue", tempRegister)
             } else if (lhsValue is InStack && rhs1Value !is InRegister) {
                 // TODO must be sized
-                builder.appendLine("add", "qword $lhsValue", "$rhs1Value")
+                builder.appendLine("imul", "qword $lhsValue", "$rhs1Value")
             } else {
-                builder.appendLine("add", "$lhsValue", "$rhs1Value")
+                builder.appendLine("imul", "$lhsValue", "$rhs1Value")
             }
         }
     }

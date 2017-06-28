@@ -5,21 +5,26 @@ import moklev.asm.instructions.Jump
 import moklev.asm.interfaces.Label
 import moklev.asm.utils.IntConst
 import moklev.asm.utils.Variable
+import moklev.dummy_lang.compiler.CompilationState
+import moklev.dummy_lang.compiler.Scope
 import moklev.dummy_lang.utils.FunctionBuilder
+import moklev.dummy_lang.utils.Type
 import org.antlr.v4.runtime.ParserRuleContext
 
 /**
  * @author Vyacheslav Moklev
  */
 abstract class BooleanExpression(ctx: ParserRuleContext) : Expression(ctx) {
-    abstract fun compileBranch(builder: FunctionBuilder, labelIfTrue: String, labelIfFalse: String)
+    abstract fun compileBranch(builder: FunctionBuilder, state: CompilationState, scope: Scope, labelIfTrue: String, labelIfFalse: String)
 
-    override fun compileResult(builder: FunctionBuilder): String {
+    override fun getType(state: CompilationState, scope: Scope): Type = Type.PrimitiveType("bool")
+
+    override fun compileResult(builder: FunctionBuilder, state: CompilationState, scope: Scope): String {
         val setOne = builder.tempLabel
         val setZero = builder.tempLabel
         val afterSetZero = builder.tempLabel
         val result = builder.tempVar
-        compileBranch(builder, setOne, setZero)
+        compileBranch(builder, state, scope, setOne, setZero)
         builder
                 .add(Label(setOne))
                 .add(Assign(Variable(result), IntConst(1)))
