@@ -12,7 +12,11 @@ import moklev.utils.ASMBuilder
 // TODO properly handle temp registers
 // TODO support global variables
 // TODO add subsumption of some kind
-// TODO appropriate spill decisions (loop depth + precolored variables should be able to be spilled) 
+// TODO appropriate spill decisions (loop depth + precolored variables should be able to be spilled), set spill cost
+// TODO eliminate blocks with optimized out instructions
+
+const val startBlockLabel = ".func_start" 
+const val endBlockLabel = ".func_end"
 
 object IntArgumentsAssignment {
     operator fun get(index: Int): StaticAssemblyValue {
@@ -35,7 +39,7 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     val blocks = SSATransformer.performOptimizations(
             SSATransformer.transform(instructions, arguments.map { it.second })
     )
-
+    
     val externalNames = HashMap<String, String>()
     for (block in blocks) {
         for (instruction in block.instructions) {
@@ -58,7 +62,16 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
 
     val liveRanges = detectLiveRange(blocks)
     val conflictGraph = buildConflictGraph(liveRanges)
-
+    val coalescingEdges = blocks
+            .asSequence()
+            .map {
+                it.label to it.instructions
+                        .asSequence()
+                        .flatMap { it.coalescingEdges().asSequence() }
+                        .toSet()
+            }
+            .toMap()
+    
     val intArguments = arguments
             .asSequence()
             .filter { it.first == Type.INT }
@@ -70,12 +83,13 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     val variableAssignment = advancedColorGraph(
             setOf("rax", "rbx", "rcx", "rdx", "r8", "r9", "r10", "r11").map { InRegister(it) }, // TODO normal registers
             mapOf(
-                        "func_start" to intArguments.mapIndexedNotNull { i, s ->
+                    startBlockLabel to intArguments.mapIndexedNotNull { i, s ->
                             val name = externalNames[s] ?: return@mapIndexedNotNull null
                             name to IntArgumentsAssignment[i] 
-                        }.toMap() // TODO func_start rename or make a constant
+                        }.toMap() 
             ),
             conflictGraph,
+            coalescingEdges,
             blocks
     )
 

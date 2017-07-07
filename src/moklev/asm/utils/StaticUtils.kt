@@ -7,7 +7,7 @@ object StaticUtils {
     private var labelCount = 0
     
     fun nextLabel(): String {
-        val label = "tempL$labelCount"
+        val label = ".LL$labelCount"
         labelCount += 1
         return label
     }

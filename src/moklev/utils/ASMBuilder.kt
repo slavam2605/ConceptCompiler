@@ -6,8 +6,16 @@ package moklev.utils
 class ASMBuilder {
     val builder = StringBuilder()
     
+    fun label(label: String) {
+        builder.append("$label:\n")
+    }
+    
     fun appendLine(instruction: String, vararg operands: String) {
-        builder.append(instruction).append(" ")
+        builder
+                .append("    ")
+                .append(instruction)
+        if (operands.isNotEmpty()) 
+            builder.append(" ")
         operands.joinTo(builder).append("\n")
     }
     

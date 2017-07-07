@@ -6,6 +6,7 @@ import moklev.asm.compiler.SSATransformer
 import moklev.asm.instructions.Assign
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
+import moklev.utils.Either
 
 /**
  * @author Vyacheslav Moklev
@@ -49,6 +50,13 @@ sealed class Instruction {
             liveRange: Map<String, LiveRange>,
             indexInBlock: Int
     )
+
+    /**
+     * Define all pairs of variables or variable-register that can be coalesced
+     * 
+     * @return list of pairs: variable to variable or variable to register
+     */
+    abstract fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>>
 }
 
 /**
@@ -98,7 +106,6 @@ abstract class BranchInstruction(val label: String) : Instruction() {
             variableAssignment: VariableAssignment,
             currentBlockLabel: String, liveRange: Map<String, LiveRange>, indexInBlock: Int
     ) {
-        // TODO properly handle reassignment between blocks
         val localAssignment = variableAssignment[currentBlockLabel]!!
         val nextBlockAssignment = variableAssignment[label]!!
 
@@ -162,6 +169,18 @@ class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) :
     }
 
     override fun simplify() = listOf(this)
+    
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+        return args
+                .asSequence()
+                .filter { it.first == Type.INT }
+                .take(6) 
+                .mapIndexedNotNull { i, pair ->  
+                    val variable = pair.second as? Variable ?: return@mapIndexedNotNull null
+                    "$variable" to Either.Left<InRegister, String>(IntArgumentsAssignment[i] as InRegister)
+                }
+                .toList()
+    }
 
     override fun compile(
             builder: ASMBuilder,
@@ -211,6 +230,7 @@ class Label(val name: String) : Instruction() {
     override val usedValues = emptyList<CompileTimeValue>()
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
     override fun simplify() = listOf(this)
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
     override fun compile(
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
@@ -254,6 +274,15 @@ class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : Assi
         return listOf(this)
     }
 
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+        return pairs
+                .asSequence()
+                .map { it.second }
+                .filterIsInstance<Variable>()
+                .map { "$lhs" to Either.Right<InRegister, String>("$it") }
+                .toList()
+    }
+
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {}
 }
 
@@ -266,6 +295,8 @@ class ExternalAssign(lhs: Variable) : AssignInstruction(lhs) {
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
     
     override fun simplify(): List<Instruction> = listOf(this)
+
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
 
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {}
 
@@ -281,6 +312,8 @@ class NoArgumentsInstruction(val name: String) : Instruction() {
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
 
     override fun simplify(): List<Instruction> = listOf(this)
+
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
 
     override fun compile(
             builder: ASMBuilder, 

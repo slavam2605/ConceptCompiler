@@ -40,7 +40,7 @@ object SSATransformer {
         ) {
             // TODO handle nextBlockLabel to avoid needless last jump to adjacent block
             val localLiveRange = liveRanges[label]!!
-            builder.appendLine("$label:")
+            builder.label(label)
             instructions.forEachIndexed { i, instruction ->
                 instruction.compile(builder, blocks, variableAssignment, label, localLiveRange, i)
             }
@@ -62,23 +62,19 @@ object SSATransformer {
 
     fun transform(instructions: List<Instruction>, functionArguments: List<String>): List<Block> {
         val blocks = extractBlocks(instructions)
-        val startBlock = Block("func_start", ArrayDeque())
+        val startBlock = Block(startBlockLabel, ArrayDeque())
         startBlock.instructions.add(NoArgumentsInstruction("push rbp"))
         startBlock.instructions.add(NoArgumentsInstruction("mov rbp, rsp"))
         for (argument in functionArguments) {
             startBlock.instructions.add(ExternalAssign(Variable(argument)))
         }
         startBlock.instructions.add(Jump(blocks[0].label))
-        val endBlock = Block("func_end", ArrayDeque())
+        val endBlock = Block(endBlockLabel, ArrayDeque())
         endBlock.instructions.add(NoArgumentsInstruction("pop rbp"))
         endBlock.instructions.add(NoArgumentsInstruction("ret"))
         blocks.add(startBlock)
         blocks.add(endBlock)
         connectBlocks(blocks)
-
-        for (block in blocks) {
-            println("${block.label} => ${block.nextBlocks.joinToString { it.label }}")
-        }
 
         blocks.forEach { println(it) }
 
@@ -148,12 +144,16 @@ object SSATransformer {
 
     private fun extractBlocks(instructions: List<Instruction>): MutableList<Block> {
         var currentList = ArrayDeque<Instruction>()
-        var lastLabel = "L0"
+        var lastLabel = StaticUtils.nextLabel()
         val blocks = mutableListOf<Block>()
         for (instruction in instructions) {
             when (instruction) {
                 is Label -> {
                     if (currentList.isNotEmpty()) {
+                        val currentLast = currentList.last
+                        if (currentLast !is Jump) {
+                            currentList.add(Jump(instruction.name))
+                        }
                         blocks.add(Block(lastLabel, currentList))
                         currentList = ArrayDeque<Instruction>()
                     }
@@ -164,9 +164,7 @@ object SSATransformer {
                 }
             }
         }
-        if (currentList.isNotEmpty()) {
-            blocks.add(Block(lastLabel, currentList))
-        }
+        blocks.add(Block(lastLabel, currentList))
         return blocks
     }
 
@@ -188,7 +186,7 @@ object SSATransformer {
         blocks
                 .flatMap { it.instructions }
                 .filterIsInstance<Assign>()
-                .forEach { assignMap[it.lhs] = it.rhs1 }
+                .forEach { assignMap[it.lhs] = assignMap[it.rhs1] ?: it.rhs1 }
         val rightUsedVariables = HashSet<String>()
         blocks
                 .asSequence()
@@ -312,8 +310,7 @@ object SSATransformer {
 
             var (changed, newBlocks) = SSATransformer.propagateConstants(blocks)
             blocks = SSATransformer.simplifyInstructions(newBlocks)
-            // TODO smarter set start block
-            blocks = SSATransformer.recalcBlockConnectivity(blocks, "func_start")
+            blocks = SSATransformer.recalcBlockConnectivity(blocks, startBlockLabel)
             changed = changed || !compareInstructionSet(blocks, newBlocks)
             if (!changed) {
                 break

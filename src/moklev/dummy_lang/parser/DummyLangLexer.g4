@@ -37,6 +37,9 @@ I64_KW:         'i64';
 BOOL_KW:        'bool';
 VAR_KW:         'var';
 RETURN_KW:      'return';
+IF_KW:          'if';
+ELSE_KW:        'else';
+FOR_KW:         'for';
 
 IDENT:          [a-zA-Z_][a-zA-Z_0-9]*;
 

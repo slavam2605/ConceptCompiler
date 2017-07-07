@@ -4,6 +4,7 @@ import moklev.asm.interfaces.BranchInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
+import moklev.utils.Either
 
 /**
  * @author Vyacheslav Moklev
@@ -26,6 +27,8 @@ class IfGreaterJump(val rhs1: CompileTimeValue, val rhs2: CompileTimeValue, labe
         return listOf(this)
     }
 
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
+
     override fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>, destLabel: String) {
         val firstOperand = rhs1.value(variableAssignment)
         val secondOperand = rhs2.value(variableAssignment)
@@ -37,6 +40,9 @@ class IfGreaterJump(val rhs1: CompileTimeValue, val rhs2: CompileTimeValue, labe
             builder.appendLine("cmp", "$firstOperand" , tempRegister)
         } else if (firstOperand is InStack && secondOperand !is InRegister) {
             builder.appendLine("cmp", "qword $firstOperand" ,"$secondOperand")            
+        } else if (firstOperand is IntConst) { // TODO properly handle this cases
+            builder.appendLine("mov", "r15", "$firstOperand") // TODO get temp register
+            builder.appendLine("cmp", "r15", "$secondOperand")
         } else {
             builder.appendLine("cmp", "$firstOperand" ,"$secondOperand")
         }

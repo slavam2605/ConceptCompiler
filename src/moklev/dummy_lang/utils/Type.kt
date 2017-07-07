@@ -14,7 +14,6 @@ sealed class Type {
                 "i64" -> moklev.asm.utils.Type.INT
                 else -> error("Unknown primitive type")
             }
-            else -> error("Unknown type")
         }
     }
 }

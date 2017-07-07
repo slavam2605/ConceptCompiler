@@ -1,4 +1,7 @@
+import moklev.asm.compiler.SSATransformer
 import moklev.asm.compiler.compile
+import moklev.asm.interfaces.Phi
+import moklev.asm.utils.Variable
 import moklev.dummy_lang.compiler.ASTVisitor
 import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.parser.DummyLangLexer
@@ -54,13 +57,20 @@ fun main(args: Array<String>) {
 //            Type.INT to "arg4"
 //    ), code).compile()
 
+    // TODO detect if variable was not initialized:
+    // var x: i64;
+    // var y: i64;
+    // var z: bool;
+    // z = x > y;
     val stream = CharStreams.fromString("""
         fun keks(a: i64, b: i64): i64 {
             var x: i64;
-            var y: i64;
-            x = a + b;  
-            y = x + b; // y = a + 2b
-            return x * y; // (a + b) * (a + 2b)
+            x = 1;
+            var i: i64;
+            for (i = 1;; a + 1 > i; i = i + 1;) {
+                x = x * i;
+            }
+            return x;
         }
     """)
     val parser = DummyLangParser(
@@ -83,9 +93,9 @@ fun main(args: Array<String>) {
     println("\n========== Compiled code ==========\n")
     println(compiledCode)
     with(PrintWriter("compiled\\file.asm")) {
-        println("BITS 64")
-        println("extern printInt")
-        println(compiledCode)
+        print("BITS 64\n")
+        print("extern printInt\n\n")
+        print(compiledCode)
         close()
     }
 }

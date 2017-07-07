@@ -4,6 +4,7 @@ import moklev.asm.interfaces.BinaryInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
+import moklev.utils.Either
 
 /**
  * @author Moklev Vyacheslav
@@ -16,8 +17,24 @@ class Mul(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
     }
 
     override fun simplify(): List<Instruction> {
-        // TODO implement
+        if (rhs1 is IntConst && rhs1.value == 1) {
+            return listOf(Assign(lhs, rhs2))
+        }
+        if (rhs2 is IntConst && rhs2.value == 1) {
+            return listOf(Assign(lhs, rhs1))
+        }
+        if (rhs1 is IntConst && rhs1.value == 0) {
+            return listOf(Assign(lhs, IntConst(0)))
+        }
+        if (rhs2 is IntConst && rhs2.value == 0) {
+            return listOf(Assign(lhs, IntConst(0)))
+        }
+        // TODO implement more (like lea and x * 2 = x + x)
         return listOf(this)
+    }
+
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+        return listOf("$lhs" to Either.Right("$rhs1"))
     }
 
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {

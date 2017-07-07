@@ -85,7 +85,6 @@ Instructions
 
 This table contains a full set of Concept-ASM instructions:
 
--------------------------------------------------------------------------------------------
 | Instruction                | Mnemonic               |            Description            |
 |----------------------------|:----------------------:|-----------------------------------|
 | Add(x, y, z)               | `x = y + z`            | Sum of two numbers                |
@@ -95,12 +94,9 @@ This table contains a full set of Concept-ASM instructions:
 | Call(f, x, y, z, ...)      | `f(x, y, z, ...)`      | Call of subroutine                |
 | Phi(x, [L1, y1], ..., [Ln, yn]) | —                | Phi node in SSA graph             |
 | Return(x)                  | `return x`             | Return the value from function    |
--------------------------------------------------------------------------------------------
 
 Internal instructions:
 
--------------------------------------------------------------------------------------------
 | Instruction                |                       Description                          |
 |----------------------------|------------------------------------------------------------|
-| ExternalAssign(x)          | Marks `x` as externally initialized variable 
--------------------------------------------------------------------------------------------
+| ExternalAssign(x)          | Marks `x` as externally initialized variable               |

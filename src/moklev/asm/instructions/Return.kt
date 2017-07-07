@@ -1,15 +1,16 @@
 package moklev.asm.instructions
 
+import moklev.asm.compiler.endBlockLabel
 import moklev.asm.interfaces.BranchInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
+import moklev.utils.Either
 
 /**
  * @author Moklev Vyacheslav
  */
-// TODO maybe replace label
-class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction("func_end") {
+class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endBlockLabel) {
     override val usedValues: List<CompileTimeValue> = listOf(rhs) 
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
@@ -19,6 +20,13 @@ class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction("fun
     }
 
     override fun simplify(): List<Instruction> = listOf(this)
+
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+        if (rhs is Variable) {
+            return listOf("$rhs" to Either.Left(InRegister("rax")))
+        }
+        return listOf()
+    }
 
     override fun compileBranch(
             builder: ASMBuilder, 

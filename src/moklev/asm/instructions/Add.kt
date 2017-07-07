@@ -4,6 +4,7 @@ import moklev.asm.interfaces.BinaryInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
+import moklev.utils.Either
 
 /**
  * @author Moklev Vyacheslav
@@ -26,6 +27,10 @@ class Add(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
             return listOf(Assign(lhs, rhs2))
         }
         return listOf(this)
+    }
+
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+        return listOf("$lhs" to Either.Right("$rhs1"))
     }
 
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {

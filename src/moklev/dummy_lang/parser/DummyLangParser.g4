@@ -14,9 +14,17 @@ typedIdentList
     ;
 
 statement
-    :   'var' IDENT ':' type ';'            #varDef
-    |   IDENT '=' expression ';'            #assign
-    |   'return' expression ';'             #return
+    :   'var' IDENT ':' type ';'        #varDef
+    |   IDENT '=' expression ';'        #assign
+    |   'return' expression ';'         #return
+    |   'if' expression '{'                
+            ifTrue+=statement*
+        '}' ('else' '{'
+            ifFalse+=statement*
+        '}')                            #ifElse
+    |   'for' '(' init=statement ';' cond=expression ';' step=statement ')' '{'
+            body+=statement*
+        '}'                             #forLoop
     ;
    
 expression
@@ -29,7 +37,7 @@ expression
 //    |   '*' expression
     |   left=expression op=('*'|'/') right=expression                           #timesDiv
     |   left=expression op=('+'|'-') right=expression                           #plusMinus
-//    |   left=expression op=('<'|'>'|'=='|'!='|'>='|'<=') right=expression
+    |   left=expression op=('<'|'>'|'=='|'!='|'>='|'<=') right=expression       #compareOp
 //    |   left=expression '&&' left=expression
 //    |   right=expression '||' right=expression
     ;

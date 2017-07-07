@@ -13,14 +13,14 @@ class FunctionBuilder(val name: String, val arguments: List<Pair<Type, String>>)
     
     val tempLabel: String
         get() {
-            val label = "temp_$labelCount"
+            val label = ".L$labelCount"
             labelCount++
             return label
         }
     
     val tempVar: String
         get() {
-            val varName = "temp_$varCount"
+            val varName = "#var_$varCount"
             varCount++
             return varName
         }

@@ -27,10 +27,31 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.VarDefContext -> visitVarDef(ctx)
             is DummyLangParser.AssignContext -> visitAssign(ctx)
             is DummyLangParser.ReturnContext -> visitReturn(ctx)
+            is DummyLangParser.IfElseContext -> visitIfElse(ctx)
+            is DummyLangParser.ForLoopContext -> visitForLoop(ctx) 
             else -> error("Branch is not supported")
         }
     }
-    
+
+    override fun visitForLoop(ctx: DummyLangParser.ForLoopContext): ForLoop {
+        return ForLoop(
+                ctx,
+                visitStatement(ctx.init),
+                visitExpression(ctx.cond),
+                visitStatement(ctx.step),
+                ctx.body.map { visitStatement(it) }
+        )
+    }
+
+    override fun visitIfElse(ctx: DummyLangParser.IfElseContext): IfElse {
+        return IfElse(
+                ctx,
+                visitExpression(ctx.expression()),
+                ctx.ifTrue.map { visitStatement(it) },
+                ctx.ifFalse.map { visitStatement(it) }
+        )
+    }
+
     override fun visitVarDef(ctx: DummyLangParser.VarDefContext): VarDef {
         return VarDef(ctx, ctx.IDENT().text, visitType(ctx.type()))
     }
@@ -49,8 +70,13 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.PlusMinusContext -> visitPlusMinus(ctx)
             is DummyLangParser.IntConstContext -> visitIntConst(ctx)
             is DummyLangParser.VariableContext -> visitVariable(ctx)
+            is DummyLangParser.CompareOpContext -> visitCompareOp(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitCompareOp(ctx: DummyLangParser.CompareOpContext): BooleanBinaryOp {
+        return BooleanBinaryOp(ctx, ctx.op.text, visitExpression(ctx.left), visitExpression(ctx.right))
     }
 
     override fun visitTimesDiv(ctx: DummyLangParser.TimesDivContext): BinaryOp {
