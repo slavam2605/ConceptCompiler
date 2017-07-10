@@ -28,7 +28,7 @@ COMMA:      ',';
 SEMICOLON:  ';';
 COLON:      ':';
 
-INT_LITERAL:    [0-9]+;
+INT_LITERAL:    '-'?[0-9]+;
 TRUE_LITERAL:   'true';
 FALSE_LITERAL:  'false';
 

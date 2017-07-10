@@ -63,14 +63,11 @@ object SSATransformer {
     fun transform(instructions: List<Instruction>, functionArguments: List<String>): List<Block> {
         val blocks = extractBlocks(instructions)
         val startBlock = Block(startBlockLabel, ArrayDeque())
-        startBlock.instructions.add(NoArgumentsInstruction("push rbp"))
-        startBlock.instructions.add(NoArgumentsInstruction("mov rbp, rsp"))
         for (argument in functionArguments) {
             startBlock.instructions.add(ExternalAssign(Variable(argument)))
         }
         startBlock.instructions.add(Jump(blocks[0].label))
         val endBlock = Block(endBlockLabel, ArrayDeque())
-        endBlock.instructions.add(NoArgumentsInstruction("pop rbp"))
         endBlock.instructions.add(NoArgumentsInstruction("ret"))
         blocks.add(startBlock)
         blocks.add(endBlock)

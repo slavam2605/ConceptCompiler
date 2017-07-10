@@ -1,5 +1,6 @@
 package moklev.dummy_lang.ast.impl
 
+import moklev.asm.instructions.IfEqualJump
 import moklev.asm.instructions.IfGreaterJump
 import moklev.asm.instructions.Jump
 import moklev.dummy_lang.ast.interfaces.BooleanExpression
@@ -25,6 +26,7 @@ class BooleanBinaryOp(ctx: ParserRuleContext, val op: String, val left: Expressi
         val rightValue = right.compileResult(builder, state, scope)
         builder.add(when (op) {
             ">" -> IfGreaterJump(Variable(leftValue), Variable(rightValue), labelIfTrue)
+            "==" -> IfEqualJump(Variable(leftValue), Variable(rightValue), labelIfTrue)
             else -> TODO("not implemented")
         })
         builder.add(Jump(labelIfFalse))

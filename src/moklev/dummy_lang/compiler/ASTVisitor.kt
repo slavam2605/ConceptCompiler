@@ -28,9 +28,14 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.AssignContext -> visitAssign(ctx)
             is DummyLangParser.ReturnContext -> visitReturn(ctx)
             is DummyLangParser.IfElseContext -> visitIfElse(ctx)
-            is DummyLangParser.ForLoopContext -> visitForLoop(ctx) 
+            is DummyLangParser.ForLoopContext -> visitForLoop(ctx)
+            is DummyLangParser.ExprStatementContext -> visitExprStatement(ctx) 
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitExprStatement(ctx: DummyLangParser.ExprStatementContext): Expression {
+        return visitExpression(ctx.expression())
     }
 
     override fun visitForLoop(ctx: DummyLangParser.ForLoopContext): ForLoop {
@@ -71,8 +76,13 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.IntConstContext -> visitIntConst(ctx)
             is DummyLangParser.VariableContext -> visitVariable(ctx)
             is DummyLangParser.CompareOpContext -> visitCompareOp(ctx)
+            is DummyLangParser.CallContext -> visitCall(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitCall(ctx: DummyLangParser.CallContext): Call {
+        return Call(ctx, ctx.IDENT().text, visitExprList(ctx.exprList()))
     }
 
     override fun visitCompareOp(ctx: DummyLangParser.CompareOpContext): BooleanBinaryOp {
@@ -101,6 +111,10 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
         val nbArguments = idents.size
         return (0..nbArguments - 1)
                 .map { types[it] to idents[it] }
+    }
+
+    override fun visitExprList(ctx: DummyLangParser.ExprListContext): List<Expression> {
+        return ctx.exprs.map { visitExpression(it) }
     }
 
     override fun visitType(ctx: DummyLangParser.TypeContext): Type {

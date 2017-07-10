@@ -53,7 +53,7 @@ sealed class Instruction {
 
     /**
      * Define all pairs of variables or variable-register that can be coalesced
-     * 
+     *
      * @return list of pairs: variable to variable or variable to register
      */
     abstract fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>>
@@ -169,13 +169,13 @@ class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) :
     }
 
     override fun simplify() = listOf(this)
-    
+
     override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
         return args
                 .asSequence()
                 .filter { it.first == Type.INT }
-                .take(6) 
-                .mapIndexedNotNull { i, pair ->  
+                .take(6)
+                .mapIndexedNotNull { i, pair ->
                     val variable = pair.second as? Variable ?: return@mapIndexedNotNull null
                     "$variable" to Either.Left<InRegister, String>(IntArgumentsAssignment[i] as InRegister)
                 }
@@ -186,8 +186,8 @@ class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) :
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String, 
-            liveRange: Map<String, LiveRange>, 
+            currentBlockLabel: String,
+            liveRange: Map<String, LiveRange>,
             indexInBlock: Int
     ) {
         val localAssignment = variableAssignment[currentBlockLabel]!!
@@ -198,24 +198,107 @@ class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) :
                 .filterIsInstance<InRegister>()
                 .filter { it in callerToSave }
                 .toList()
-        
+
         for (register in registersToSave) {
             compilePush(builder, register)
         }
-        
+
         val intArguments = args
                 .asSequence()
                 .filter { it.first == Type.INT }
                 .map { it.second }
-        
+
         intArguments.forEachIndexed { i, arg ->
             compileAssign(builder, IntArgumentsAssignment[i], arg.value(localAssignment)!!)
         }
-        
+
         // TODO align stack to 16 bytes
-        
+
         builder.appendLine("call", funcName)
+
+        for (register in registersToSave.asReversed()) {
+            compilePop(builder, register)
+        }
+    }
+}
+
+/**
+ * Call of function with result
+ */
+class AssignCall(val funcName: String, lhs: Variable, val args: List<Pair<Type, CompileTimeValue>>) : AssignInstruction(lhs) {
+    private val callerToSave = listOf(
+            "rax", "rcx", "rdx",
+            "rdi", "rsi", "rsp",
+            "r8", "r9", "r10", "r11"
+    ).map { InRegister(it) }
+
+    override fun toString() = "$lhs = call $funcName(${args.joinToString()})"
+
+    override val usedValues = args.map { it.second }
+
+    override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
+        val newArgs = args.map { it.first to if (it.second == variable) value else it.second }
+        return AssignCall(funcName, lhs, newArgs)
+    }
+
+    override fun simplify() = listOf(this)
+
+    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+        val result = ArrayList<Pair<String, Either<InRegister, String>>>()
+        result.add("$lhs" to Either.Left(InRegister("rax"))) // TODO depend on type
+        args
+                .asSequence()
+                .filter { it.first == Type.INT }
+                .take(6)
+                .mapIndexedNotNullTo(result) { i, pair ->
+                    val variable = pair.second as? Variable ?: return@mapIndexedNotNullTo null
+                    "$variable" to Either.Left<InRegister, String>(IntArgumentsAssignment[i] as InRegister)
+                }
+                .toList()
+        return result
+    }
+
+    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) =
+            error("Not applicable")
+
+    override fun compile(
+            builder: ASMBuilder,
+            blocks: Map<String, SSATransformer.Block>,
+            variableAssignment: VariableAssignment,
+            currentBlockLabel: String,
+            liveRange: Map<String, LiveRange>,
+            indexInBlock: Int
+    ) {
+        val localAssignment = variableAssignment[currentBlockLabel]!!
+        val registersToSave = liveRange
+                .asSequence()
+                .filter { indexInBlock > it.value.firstIndex && indexInBlock < it.value.lastIndex }
+                .map { localAssignment[it.key]!! }
+                .filterIsInstance<InRegister>()
+                .filter { it in callerToSave }
+                .toList()
+
+        println("liveRange = $liveRange ")
         
+        for (register in registersToSave) {
+            compilePush(builder, register)
+        }
+
+        val intArguments = args
+                .asSequence()
+                .filter { it.first == Type.INT }
+                .map { it.second }
+
+        intArguments.forEachIndexed { i, arg ->
+            compileAssign(builder, IntArgumentsAssignment[i], arg.value(localAssignment)!!)
+        }
+
+        // TODO align stack to 16 bytes
+
+        builder.appendLine("call", funcName)
+
+        compileAssign(builder, lhs.value(localAssignment)!!, InRegister("rax"))
+
         for (register in registersToSave.asReversed()) {
             compilePop(builder, register)
         }
@@ -293,7 +376,7 @@ class ExternalAssign(lhs: Variable) : AssignInstruction(lhs) {
     override val usedValues: List<CompileTimeValue> = emptyList()
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
-    
+
     override fun simplify(): List<Instruction> = listOf(this)
 
     override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
@@ -316,11 +399,11 @@ class NoArgumentsInstruction(val name: String) : Instruction() {
     override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
 
     override fun compile(
-            builder: ASMBuilder, 
-            blocks: Map<String, SSATransformer.Block>, 
-            variableAssignment: VariableAssignment, 
-            currentBlockLabel: String, 
-            liveRange: Map<String, LiveRange>, 
+            builder: ASMBuilder,
+            blocks: Map<String, SSATransformer.Block>,
+            variableAssignment: VariableAssignment,
+            currentBlockLabel: String,
+            liveRange: Map<String, LiveRange>,
             indexInBlock: Int
     ) {
         builder.appendLine(name)

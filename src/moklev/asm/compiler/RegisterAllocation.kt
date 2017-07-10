@@ -592,6 +592,8 @@ private fun colorBlocks(
                 throw IllegalArgumentException("Conflicting initial coloring")
             indexToColor[result[nodeIndex]] = color
             remainingColors.remove(color)
+            println("${result[nodeIndex]} <= $color")
+            println("remain: $remainingColors")
         }
     }
 
@@ -626,7 +628,7 @@ private fun colorBlocks(
             }
         } else if (indexToColor[colorIndex] == null) {
             val preferredColor = preferredColor() as? InRegister
-            if (preferredColor != null) {
+            if (preferredColor != null && preferredColor in remainingColors) {
                 indexToColor[colorIndex] = preferredColor
                 remainingColors.remove(preferredColor)
                 resultColoring[node] = preferredColor

@@ -21,15 +21,16 @@ statement
             ifTrue+=statement*
         '}' ('else' '{'
             ifFalse+=statement*
-        '}')                            #ifElse
+        '}')?                           #ifElse
     |   'for' '(' init=statement ';' cond=expression ';' step=statement ')' '{'
             body+=statement*
         '}'                             #forLoop
+    |   expression                      #exprStatement
     ;
    
 expression
     :   INT_LITERAL                                                             #intConst
-//    |   IDENT '(' exprList ')'
+    |   IDENT '(' exprList ')'                                                  #call
     |   IDENT                                                                   #variable
 //    |   '(' expression ')'
 //    |   '-' expression
@@ -40,6 +41,10 @@ expression
     |   left=expression op=('<'|'>'|'=='|'!='|'>='|'<=') right=expression       #compareOp
 //    |   left=expression '&&' left=expression
 //    |   right=expression '||' right=expression
+    ;
+
+exprList
+    :   (exprs+=expression (',' exprs+=expression)*)?
     ;
 
 type

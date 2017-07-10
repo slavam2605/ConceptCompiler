@@ -24,7 +24,7 @@ class Add(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
             return listOf(Assign(lhs, rhs2))
         }
         if (rhs2 is IntConst && rhs2.value == 0) {
-            return listOf(Assign(lhs, rhs2))
+            return listOf(Assign(lhs, rhs1))
         }
         return listOf(this)
     }

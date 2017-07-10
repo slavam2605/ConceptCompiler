@@ -1,6 +1,7 @@
 package moklev.asm.compiler
 
 import moklev.asm.interfaces.ExternalAssign
+import moklev.asm.interfaces.NoArgumentsInstruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
 
@@ -32,10 +33,14 @@ object IntArgumentsAssignment {
     }
 }
 
+val calleeToSave = listOf(
+        "rbp", "rbx", "r12", "r13", "r14", "r15"
+).map { InRegister(it) }
+
 fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     dest.appendLine("global $name")
     dest.appendLine("$name:")
-    // TODO allocate arguments
+
     val blocks = SSATransformer.performOptimizations(
             SSATransformer.transform(instructions, arguments.map { it.second })
     )
@@ -97,6 +102,27 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
         println("$a: $b")
     }
 
+    val registersToSave = HashSet<String>()
+    for ((_, assignment) in variableAssignment) {
+        for (register in calleeToSave) {
+            val values = HashSet(assignment.values)
+            if (register in values) {
+                registersToSave.add(register.register)
+            }
+            if (values.firstOrNull { it is InStack } != null)
+                registersToSave.add("rbp")
+        }
+    }
+    val registersToSaveOrdered = registersToSave.toList()
+    val startBlock = blocks.first { it.label == startBlockLabel }
+    val endBlock = blocks.first { it.label == endBlockLabel }
+    for (register in registersToSaveOrdered) {
+        startBlock.instructions.addFirst(NoArgumentsInstruction("push $register"))
+    }
+    for (register in registersToSaveOrdered.asReversed()) {
+        endBlock.instructions.addFirst(NoArgumentsInstruction("pop $register"))
+    }
+    
     val builder = ASMBuilder()
     for (i in 0..blocks.size - 1) {
         val block = blocks[i]

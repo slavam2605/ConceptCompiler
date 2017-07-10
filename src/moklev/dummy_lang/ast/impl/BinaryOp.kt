@@ -2,6 +2,7 @@ package moklev.dummy_lang.ast.impl
 
 import moklev.asm.instructions.Add
 import moklev.asm.instructions.Mul
+import moklev.asm.instructions.Sub
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState
@@ -30,6 +31,7 @@ class BinaryOp(ctx: ParserRuleContext, val op: String, val left: Expression, val
         builder.add(when (op) {
             "+" -> Add(Variable(result), Variable(leftResult), Variable(rightResult))
             "*" -> Mul(Variable(result), Variable(leftResult), Variable(rightResult))
+            "-" -> Sub(Variable(result), Variable(leftResult), Variable(rightResult))
             else -> TODO("not implemented")
         })
         return result
