@@ -1,7 +1,7 @@
 package moklev.asm.compiler
 
-import moklev.asm.interfaces.ExternalAssign
-import moklev.asm.interfaces.NoArgumentsInstruction
+import moklev.asm.instructions.ExternalAssign
+import moklev.asm.interfaces.RawTextInstruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
 
@@ -12,7 +12,6 @@ import moklev.utils.ASMBuilder
 // TODO layout blocks to minimize amount of jumps
 // TODO properly handle temp registers
 // TODO support global variables
-// TODO add subsumption of some kind
 // TODO appropriate spill decisions (loop depth + precolored variables should be able to be spilled), set spill cost
 // TODO eliminate blocks with optimized out instructions
 
@@ -22,12 +21,12 @@ const val endBlockLabel = ".func_end"
 object IntArgumentsAssignment {
     operator fun get(index: Int): StaticAssemblyValue {
         return when (index) {
-            0 -> InRegister("rdi")
-            1 -> InRegister("rsi")
-            2 -> InRegister("rdx")
-            3 -> InRegister("rcx")
-            4 -> InRegister("r8")
-            5 -> InRegister("r9")
+            0 -> RDI
+            1 -> RSI
+            2 -> RDX
+            3 -> RCX
+            4 -> R8
+            5 -> R9
             else -> InStack(8 * (index - 5))
         }
     }
@@ -87,6 +86,7 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     
     val variableAssignment = advancedColorGraph(
             setOf("rax", "rbx", "rcx", "rdx", "r8", "r9", "r10", "r11").map { InRegister(it) }, // TODO normal registers
+//            setOf("rdi", "rsi").map { InRegister(it) }, // TODO normal registers
             mapOf(
                     startBlockLabel to intArguments.mapIndexedNotNull { i, s ->
                             val name = externalNames[s] ?: return@mapIndexedNotNull null
@@ -102,6 +102,7 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
         println("$a: $b")
     }
 
+    var stackUsed = false
     val registersToSave = HashSet<String>()
     for ((_, assignment) in variableAssignment) {
         for (register in calleeToSave) {
@@ -109,18 +110,38 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
             if (register in values) {
                 registersToSave.add(register.register)
             }
-            if (values.firstOrNull { it is InStack } != null)
+            if (values.firstOrNull { it is InStack } != null) {
                 registersToSave.add("rbp")
+                stackUsed = true
+            }
         }
     }
     val registersToSaveOrdered = registersToSave.toList()
     val startBlock = blocks.first { it.label == startBlockLabel }
     val endBlock = blocks.first { it.label == endBlockLabel }
+    if (stackUsed) {
+        var maxOffset = 0
+        variableAssignment.values.forEach {
+            it.values.forEach {
+                if (it is InStack) {
+                    maxOffset = maxOf(maxOffset, it.offset)
+                }
+            }
+        }
+        maxOffset = maxOffset + (maxOffset and 15)
+        if (maxOffset > 0) {
+            startBlock.instructions.addFirst(RawTextInstruction("sub rsp, $maxOffset"))
+        }
+        startBlock.instructions.addFirst(RawTextInstruction("mov rbp, rsp"))
+    }
     for (register in registersToSaveOrdered) {
-        startBlock.instructions.addFirst(NoArgumentsInstruction("push $register"))
+        startBlock.instructions.addFirst(RawTextInstruction("push $register"))
     }
     for (register in registersToSaveOrdered.asReversed()) {
-        endBlock.instructions.addFirst(NoArgumentsInstruction("pop $register"))
+        endBlock.instructions.addFirst(RawTextInstruction("pop $register"))
+    }
+    if (stackUsed) {
+        endBlock.instructions.addFirst(RawTextInstruction("mov rsp, rbp"))
     }
     
     val builder = ASMBuilder()

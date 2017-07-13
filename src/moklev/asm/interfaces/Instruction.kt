@@ -1,9 +1,8 @@
 package moklev.asm.interfaces
 
-import moklev.asm.compiler.IntArgumentsAssignment
 import moklev.asm.compiler.LiveRange
 import moklev.asm.compiler.SSATransformer
-import moklev.asm.instructions.Assign
+import moklev.asm.instructions.Phi
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
 import moklev.utils.Either
@@ -80,20 +79,6 @@ abstract class AssignInstruction(val lhs: Variable) : Instruction() {
 }
 
 /**
- * Binary instruction of form `v1 = v2 <op> v3`
- */
-abstract class BinaryInstruction(lhs: Variable, val rhs1: CompileTimeValue, val rhs2: CompileTimeValue) : AssignInstruction(lhs) {
-    override val usedValues = listOf(rhs1, rhs2)
-}
-
-/**
- * Unary instruction of form `v1 = <op> v2`
- */
-abstract class UnaryInstruction(lhs: Variable, val rhs1: CompileTimeValue) : AssignInstruction(lhs) {
-    override val usedValues = listOf(rhs1)
-}
-
-/**
  * Branch instruction that can change a control flow. [label] is a label of the basic block
  * that can be jumped onto
  */
@@ -150,162 +135,6 @@ abstract class BranchInstruction(val label: String) : Instruction() {
 abstract class ReadonlyInstruction : Instruction()
 
 /**
- * Call of function (subroutine)
- */
-class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : Instruction() {
-    private val callerToSave = listOf(
-            "rax", "rcx", "rdx",
-            "rdi", "rsi", "rsp",
-            "r8", "r9", "r10", "r11"
-    ).map { InRegister(it) }
-
-    override fun toString() = "call $funcName(${args.joinToString()})"
-
-    override val usedValues = args.map { it.second }
-
-    override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
-        val newArgs = args.map { it.first to if (it.second == variable) value else it.second }
-        return Call(funcName, newArgs)
-    }
-
-    override fun simplify() = listOf(this)
-
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
-        return args
-                .asSequence()
-                .filter { it.first == Type.INT }
-                .take(6)
-                .mapIndexedNotNull { i, pair ->
-                    val variable = pair.second as? Variable ?: return@mapIndexedNotNull null
-                    "$variable" to Either.Left<InRegister, String>(IntArgumentsAssignment[i] as InRegister)
-                }
-                .toList()
-    }
-
-    override fun compile(
-            builder: ASMBuilder,
-            blocks: Map<String, SSATransformer.Block>,
-            variableAssignment: VariableAssignment,
-            currentBlockLabel: String,
-            liveRange: Map<String, LiveRange>,
-            indexInBlock: Int
-    ) {
-        val localAssignment = variableAssignment[currentBlockLabel]!!
-        val registersToSave = liveRange
-                .asSequence()
-                .filter { indexInBlock >= it.value.firstIndex && indexInBlock < it.value.lastIndex }
-                .map { localAssignment[it.key]!! }
-                .filterIsInstance<InRegister>()
-                .filter { it in callerToSave }
-                .toList()
-
-        for (register in registersToSave) {
-            compilePush(builder, register)
-        }
-
-        val intArguments = args
-                .asSequence()
-                .filter { it.first == Type.INT }
-                .map { it.second }
-
-        intArguments.forEachIndexed { i, arg ->
-            compileAssign(builder, IntArgumentsAssignment[i], arg.value(localAssignment)!!)
-        }
-
-        // TODO align stack to 16 bytes
-
-        builder.appendLine("call", funcName)
-
-        for (register in registersToSave.asReversed()) {
-            compilePop(builder, register)
-        }
-    }
-}
-
-/**
- * Call of function with result
- */
-class AssignCall(val funcName: String, lhs: Variable, val args: List<Pair<Type, CompileTimeValue>>) : AssignInstruction(lhs) {
-    private val callerToSave = listOf(
-            "rax", "rcx", "rdx",
-            "rdi", "rsi", "rsp",
-            "r8", "r9", "r10", "r11"
-    ).map { InRegister(it) }
-
-    override fun toString() = "$lhs = call $funcName(${args.joinToString()})"
-
-    override val usedValues = args.map { it.second }
-
-    override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
-        val newArgs = args.map { it.first to if (it.second == variable) value else it.second }
-        return AssignCall(funcName, lhs, newArgs)
-    }
-
-    override fun simplify() = listOf(this)
-
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
-        val result = ArrayList<Pair<String, Either<InRegister, String>>>()
-        result.add("$lhs" to Either.Left(InRegister("rax"))) // TODO depend on type
-        args
-                .asSequence()
-                .filter { it.first == Type.INT }
-                .take(6)
-                .mapIndexedNotNullTo(result) { i, pair ->
-                    val variable = pair.second as? Variable ?: return@mapIndexedNotNullTo null
-                    "$variable" to Either.Left<InRegister, String>(IntArgumentsAssignment[i] as InRegister)
-                }
-                .toList()
-        return result
-    }
-
-    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) =
-            error("Not applicable")
-
-    override fun compile(
-            builder: ASMBuilder,
-            blocks: Map<String, SSATransformer.Block>,
-            variableAssignment: VariableAssignment,
-            currentBlockLabel: String,
-            liveRange: Map<String, LiveRange>,
-            indexInBlock: Int
-    ) {
-        val localAssignment = variableAssignment[currentBlockLabel]!!
-        val registersToSave = liveRange
-                .asSequence()
-                .filter { indexInBlock > it.value.firstIndex && indexInBlock < it.value.lastIndex }
-                .map { localAssignment[it.key]!! }
-                .filterIsInstance<InRegister>()
-                .filter { it in callerToSave }
-                .toList()
-
-        println("liveRange = $liveRange ")
-        
-        for (register in registersToSave) {
-            compilePush(builder, register)
-        }
-
-        val intArguments = args
-                .asSequence()
-                .filter { it.first == Type.INT }
-                .map { it.second }
-
-        intArguments.forEachIndexed { i, arg ->
-            compileAssign(builder, IntArgumentsAssignment[i], arg.value(localAssignment)!!)
-        }
-
-        // TODO align stack to 16 bytes
-
-        builder.appendLine("call", funcName)
-
-        compileAssign(builder, lhs.value(localAssignment)!!, InRegister("rax"))
-
-        for (register in registersToSave.asReversed()) {
-            compilePop(builder, register)
-        }
-    }
-}
-
-/**
  * Actually not an instruction, just label to jump on
  */
 class Label(val name: String) : Instruction() {
@@ -324,72 +153,9 @@ class Label(val name: String) : Instruction() {
 }
 
 /**
- * Phi node of SSA graph. Controls rules of merging variable value from
- * multiple incoming blocks
- */
-class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : AssignInstruction(lhs) {
-    override fun toString(): String {
-        return "$lhs = phi ${pairs.joinToString { "[${it.first}, ${it.second}]" }}"
-    }
-
-    override val usedValues: List<CompileTimeValue>
-        get() {
-            val list = mutableListOf<CompileTimeValue>()
-            for ((_, rhs) in pairs) {
-                list.add(rhs)
-            }
-            return list
-        }
-
-    override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
-        return Phi(lhs, pairs.map {
-            if (it.second == variable) it.first to value else it
-        })
-    }
-
-    override fun simplify(): List<Instruction> {
-        if (pairs.isEmpty())
-            return emptyList()
-        if (pairs.size == 1)
-            return listOf(Assign(lhs, pairs[0].second))
-        if (pairs.all { it.second == pairs[0].second })
-            return listOf(Assign(lhs, pairs[0].second))
-        return listOf(this)
-    }
-
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
-        return pairs
-                .asSequence()
-                .map { it.second }
-                .filterIsInstance<Variable>()
-                .map { "$lhs" to Either.Right<InRegister, String>("$it") }
-                .toList()
-    }
-
-    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {}
-}
-
-/**
- * Internal instruction that marks [lhs] as externally initialized value
- */
-class ExternalAssign(lhs: Variable) : AssignInstruction(lhs) {
-    override val usedValues: List<CompileTimeValue> = emptyList()
-
-    override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
-
-    override fun simplify(): List<Instruction> = listOf(this)
-
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
-
-    override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {}
-
-    override fun toString(): String = "$lhs = [externally assigned]"
-}
-
-/**
  * Instruction with no arguments and special semantics like `ret` or `leave`
  */
-class NoArgumentsInstruction(val name: String) : Instruction() {
+class RawTextInstruction(val name: String) : Instruction() {
     override val usedValues: List<CompileTimeValue> = listOf()
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this

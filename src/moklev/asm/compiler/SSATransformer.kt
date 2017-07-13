@@ -1,7 +1,9 @@
 package moklev.asm.compiler
 
 import moklev.asm.instructions.Assign
+import moklev.asm.instructions.ExternalAssign
 import moklev.asm.instructions.Jump
+import moklev.asm.instructions.Phi
 import moklev.asm.interfaces.*
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
@@ -68,7 +70,7 @@ object SSATransformer {
         }
         startBlock.instructions.add(Jump(blocks[0].label))
         val endBlock = Block(endBlockLabel, ArrayDeque())
-        endBlock.instructions.add(NoArgumentsInstruction("ret"))
+        endBlock.instructions.add(RawTextInstruction("ret"))
         blocks.add(startBlock)
         blocks.add(endBlock)
         connectBlocks(blocks)

@@ -171,3 +171,12 @@ class DoubleConst(val value: Double) : StaticAssemblyValue() {
         return value.hashCode()
     }
 }
+
+// Useful constants
+val RAX = InRegister("rax")
+val RDI = InRegister("rdi")
+val RSI = InRegister("rsi")
+val RDX = InRegister("rdx")
+val RCX = InRegister("rcx")
+val R8 = InRegister("r8")
+val R9 = InRegister("r9")

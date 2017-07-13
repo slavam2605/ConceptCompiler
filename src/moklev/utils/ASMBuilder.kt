@@ -10,7 +10,7 @@ class ASMBuilder {
         builder.append("$label:\n")
     }
     
-    fun appendLine(instruction: String, vararg operands: String) {
+    fun appendLine(instruction: String, vararg operands: Any?) {
         builder
                 .append("    ")
                 .append(instruction)

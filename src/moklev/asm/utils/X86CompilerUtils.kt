@@ -1,5 +1,8 @@
 package moklev.asm.utils
 
+import moklev.asm.compiler.IntArgumentsAssignment
+import moklev.asm.compiler.LiveRange
+import moklev.asm.compiler.SSATransformer
 import moklev.utils.ASMBuilder
 import java.util.*
 
@@ -39,7 +42,7 @@ fun compileReassignment(builder: ASMBuilder, assignList: List<Pair<StaticAssembl
     inputDegree
             .filter { (_, deg) -> deg == 0 }
             .mapTo(noInputDegreeList) { it.key }
-    
+
     while (noInputDegreeList.isNotEmpty()) {
         val dest = noInputDegreeList.pollFirst()
         val src = backAssignGraph[dest] ?: continue
@@ -50,7 +53,7 @@ fun compileReassignment(builder: ASMBuilder, assignList: List<Pair<StaticAssembl
             noInputDegreeList.addLast(src)
         }
     }
-    
+
     val assigned = HashSet<StaticAssemblyValue>()
     for (dest in backAssignGraph.keys) {
         if (dest !in assigned) {
@@ -87,5 +90,51 @@ fun compilePop(builder: ASMBuilder, value: StaticAssemblyValue) {
             builder.appendLine("pop", value.toString())
         }
         else -> NotImplementedError()
+    }
+}
+
+val callerToSave = listOf(
+        "rax", "rcx", "rdx",
+        "rdi", "rsi", "rsp",
+        "r8", "r9", "r10", "r11"
+).map { InRegister(it) }
+
+fun compileCall(builder: ASMBuilder,
+                funcName: String,
+                args: List<Pair<Type, CompileTimeValue>>,
+                variableAssignment: VariableAssignment,
+                currentBlockLabel: String,
+                liveRange: Map<String, LiveRange>,
+                indexInBlock: Int,
+                result: StaticAssemblyValue? = null) {
+    val localAssignment = variableAssignment[currentBlockLabel]!!
+    val registersToSave = liveRange
+            .asSequence()
+            .filter { indexInBlock > it.value.firstIndex && indexInBlock < it.value.lastIndex }
+            .map { localAssignment[it.key]!! }
+            .filterIsInstance<InRegister>()
+            .filter { it in callerToSave }
+            .toList()
+
+    for (register in registersToSave) {
+        compilePush(builder, register)
+    }
+
+    val intArguments = args
+            .asSequence()
+            .filter { it.first == Type.INT }
+            .map { it.second }
+
+    intArguments.forEachIndexed { i, arg ->
+        compileAssign(builder, IntArgumentsAssignment[i], arg.value(localAssignment)!!)
+    }
+
+    builder.appendLine("call", funcName)
+    if (result != null) {
+        compileAssign(builder, result, RAX)
+    }
+
+    for (register in registersToSave.asReversed()) {
+        compilePop(builder, register)
     }
 }

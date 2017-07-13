@@ -1,7 +1,6 @@
 package moklev.dummy_lang.ast.impl
 
-import moklev.asm.interfaces.AssignCall
-import moklev.asm.interfaces.Call
+import moklev.asm.instructions.AssignCall
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState

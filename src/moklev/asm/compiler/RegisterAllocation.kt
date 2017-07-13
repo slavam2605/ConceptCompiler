@@ -1,20 +1,16 @@
 package moklev.asm.compiler
 
 import moklev.asm.compiler.SSATransformer.Block
+import moklev.asm.instructions.Phi
 import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.interfaces.BranchInstruction
-import moklev.asm.interfaces.Phi
 import moklev.asm.utils.*
 import moklev.utils.Either
-import moklev.utils.maybeRight
-import java.rmi.registry.Registry
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 import kotlin.collections.LinkedHashSet
-import kotlin.coroutines.experimental.buildIterator
-import kotlin.coroutines.experimental.buildSequence
 
 /**
  * @author Moklev Vyacheslav
@@ -678,6 +674,7 @@ private fun colorGraph(nbColors: Int, nbNodes: Int, graph: Array<BooleanArray>, 
                 .maxBy { degrees[it] }
                 ?: (0..nbNodes - 1)
                 .asSequence()
+                .filter { !isDropNode[it] }
                 .minBy { spillCost[it] }!!
         isDropNode[dropNode] = true
         dropNodes.add(dropNode)

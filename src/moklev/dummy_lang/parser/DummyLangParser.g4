@@ -32,7 +32,7 @@ expression
     :   INT_LITERAL                                                             #intConst
     |   IDENT '(' exprList ')'                                                  #call
     |   IDENT                                                                   #variable
-//    |   '(' expression ')'
+    |   '(' expression ')'                                                      #parenExpression
 //    |   '-' expression
 //    |   '!' expression
 //    |   '*' expression

@@ -1,6 +1,5 @@
 package moklev.asm.instructions
 
-import moklev.asm.interfaces.BinaryInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder

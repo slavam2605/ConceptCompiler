@@ -1,12 +1,8 @@
-import moklev.asm.compiler.SSATransformer
 import moklev.asm.compiler.compile
-import moklev.asm.interfaces.Phi
-import moklev.asm.utils.Variable
 import moklev.dummy_lang.compiler.ASTVisitor
 import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.parser.DummyLangLexer
 import moklev.dummy_lang.parser.DummyLangParser
-import org.antlr.v4.runtime.ANTLRInputStream
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.PrintWriter
@@ -74,9 +70,19 @@ fun main(args: Array<String>) {
 //        }
 //    """)
 //    val stream = CharStreams.fromString("""
-//        fun keks(a: i64): i64 {
-//            if a > 0 {
-//                return a * keks(a - 1);
+//        fun keks(x: i64, y: i64): i64 {
+//            if x > 0 {
+//                var x1: i64;
+//                var x2: i64;
+//                var x3: i64;
+//                var x4: i64;
+//                var x5: i64;
+//                x1 = keks(x - 1);
+//                x2 = keks(x - 1);
+//                x3 = keks(x - 1);
+//                x4 = keks(x - 1);
+//                x5 = keks(x - 1);
+//                return x * (x1 + x2 + x3 - x4 - x5);
 //            }
 //            return 1;
 //        }

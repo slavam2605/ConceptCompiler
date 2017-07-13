@@ -77,8 +77,13 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.VariableContext -> visitVariable(ctx)
             is DummyLangParser.CompareOpContext -> visitCompareOp(ctx)
             is DummyLangParser.CallContext -> visitCall(ctx)
+            is DummyLangParser.ParenExpressionContext -> visitParenExpression(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitParenExpression(ctx: DummyLangParser.ParenExpressionContext): Expression {
+        return visitExpression(ctx.expression())
     }
 
     override fun visitCall(ctx: DummyLangParser.CallContext): Call {

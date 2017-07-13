@@ -1,7 +1,6 @@
 package moklev.asm.instructions
 
 import moklev.asm.interfaces.Instruction
-import moklev.asm.interfaces.UnaryInstruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
 import moklev.utils.Either
