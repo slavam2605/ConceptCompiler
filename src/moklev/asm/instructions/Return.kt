@@ -23,7 +23,7 @@ class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endB
 
     override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
         if (rhs is Variable) {
-            return listOf("$rhs" to Either.Left(InRegister("rax")))
+            return listOf("$rhs" to Either.Left(RAX))
         }
         return listOf()
     }
@@ -35,7 +35,7 @@ class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endB
     ) {
         when (type) {
             Type.INT -> {
-                compileAssign(builder, InRegister("rax"), rhs.value(variableAssignment)!!)
+                compileAssign(builder, RAX, rhs.value(variableAssignment)!!)
                 builder.appendLine("jmp", destLabel)
             }
             else -> NotImplementedError()

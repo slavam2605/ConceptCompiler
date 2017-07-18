@@ -471,8 +471,8 @@ private fun colorBlocks(
             }
             val newStackAllocated = coloring.value.count { it.value is InStack }
             println("NEWWWWWWWW: $newStackAllocated")
-            if (newStackAllocated < stackAllocated)
-                error("WAT") // TODO solve if there is a way to achieve
+//            if (newStackAllocated < stackAllocated)
+//                error("WAT") // TODO solve if there is a way to achieve
             if (newStackAllocated > stackAllocated)
                 continue
             mergedNodesMap[newVar] = lVar to rVar

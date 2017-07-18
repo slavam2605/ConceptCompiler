@@ -19,9 +19,9 @@ fun compileAssign(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAsse
             builder.appendLine("mov", "$lhs", tempRegister)
         } else if (lhs is InStack && rhs !is InRegister) {
             // TODO must be typed or at least sized
-            builder.appendLine("mov", "qword $lhs", "$rhs")
+            builder.appendLine("mov", lhs, rhs)
         } else {
-            builder.appendLine("mov", "$lhs", "$rhs")
+            builder.appendLine("mov", lhs, rhs)
         }
     }
 }
@@ -58,7 +58,7 @@ fun compileReassignment(builder: ASMBuilder, assignList: List<Pair<StaticAssembl
     for (dest in backAssignGraph.keys) {
         if (dest !in assigned) {
             // TODO properly choose temp register
-            val tempRegister = InRegister("r14")
+            val tempRegister = R14
             compileAssign(builder, tempRegister, dest)
             var currentDest = dest
             while (true) {
@@ -137,4 +137,44 @@ fun compileCall(builder: ASMBuilder,
     for (register in registersToSave.asReversed()) {
         compilePop(builder, register)
     }
+}
+
+fun compileBinaryOperation(
+        builder: ASMBuilder,
+        operation: String,
+        lhs: StaticAssemblyValue,
+        rhs1: StaticAssemblyValue,
+        rhs2: StaticAssemblyValue,
+        symmetric: Boolean = false) {
+    if (symmetric) {
+        if (lhs == rhs2 && lhs != rhs1 
+                || rhs1 is InStack && rhs2 is InRegister
+                || rhs1 is IntConst && rhs2 !is IntConst)
+            return compileBinaryOperation(builder, operation, lhs, rhs2, rhs1)
+    }
+    
+    if (lhs != rhs1 && lhs == rhs2 || lhs is InStack) {
+        // TODO proper temp register
+        val tempRegister = R15
+        compileAssign(builder, tempRegister, rhs1)
+        builder.appendLine(operation, tempRegister, rhs2)
+        compileAssign(builder, lhs, tempRegister)
+        return
+    }
+    
+    if (lhs != rhs1) 
+        compileAssign(builder, lhs, rhs1)
+    builder.appendLine(operation, lhs, rhs2)
+}
+
+fun compileCompare(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAssemblyValue) {
+    if (lhs is InStack && rhs is InStack || lhs is IntConst) {
+        // TODO normal temp register
+        val tempRegister = R15
+        compileAssign(builder, tempRegister, lhs)
+        builder.appendLine("cmp", tempRegister, rhs)
+        return
+    }
+    
+    builder.appendLine("cmp", lhs, rhs)
 }

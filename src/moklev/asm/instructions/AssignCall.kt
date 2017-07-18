@@ -28,7 +28,7 @@ class AssignCall(val funcName: String, lhs: Variable, val args: List<Pair<Type, 
 
     override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
         val result = ArrayList<Pair<String, Either<InRegister, String>>>()
-        result.add("$lhs" to Either.Left(InRegister("rax"))) // TODO depend on type
+        result.add("$lhs" to Either.Left(RAX)) // TODO depend on type
         args
                 .asSequence()
                 .filter { it.first == Type.INT }

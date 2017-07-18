@@ -95,7 +95,7 @@ class InRegister(val register: String) : StaticAssemblyValue() {
  * Location of variable on stack in [rbp - [offset]]
  */
 class InStack(val offset: Int) : StaticAssemblyValue() {
-    override fun toString(): String = "[rbp - $offset]"
+    override fun toString(): String = "qword [rbp - $offset]"
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -174,9 +174,18 @@ class DoubleConst(val value: Double) : StaticAssemblyValue() {
 
 // Useful constants
 val RAX = InRegister("rax")
+val RBX = InRegister("rbx")
+val RCX = InRegister("rcx")
+val RDX = InRegister("rdx")
 val RDI = InRegister("rdi")
 val RSI = InRegister("rsi")
-val RDX = InRegister("rdx")
-val RCX = InRegister("rcx")
+val RBP = InRegister("rbp")
+val RSP = InRegister("rsp")
 val R8 = InRegister("r8")
 val R9 = InRegister("r9")
+val R10 = InRegister("r10")
+val R11 = InRegister("r11")
+val R12 = InRegister("r12")
+val R13 = InRegister("r13")
+val R14 = InRegister("r14")
+val R15 = InRegister("r15")

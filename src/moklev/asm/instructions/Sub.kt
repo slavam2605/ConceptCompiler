@@ -34,33 +34,6 @@ class Sub(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
         val rhs1Value = rhs1.value(variableAssignment)!!
         val rhs2Value = rhs2.value(variableAssignment)!!
 
-        if (lhsValue != rhs1Value) {
-            compileAssign(builder, lhsValue, rhs1Value)
-            if (lhsValue is InStack && rhs2Value is InStack) {
-                // TODO get temp register
-                val tempRegister = "r15"
-                builder.appendLine("mov", tempRegister, "$lhsValue")
-                builder.appendLine("sub", tempRegister, "$rhs2Value")
-                builder.appendLine("mov", "$lhsValue", tempRegister)
-            } else if (lhsValue is InStack && rhs2Value !is InRegister) {
-                // TODO must be sized
-                builder.appendLine("sub", "qword $lhsValue", "$rhs2Value")
-            } else {
-                builder.appendLine("sub", "$lhsValue", "$rhs2Value")
-            }
-        } else if (lhsValue == rhs1Value) {
-            if (lhsValue is InStack && rhs2Value is InStack) {
-                // TODO get temp register
-                val tempRegister = "r15"
-                builder.appendLine("mov", tempRegister, "$lhsValue")
-                builder.appendLine("sub", tempRegister, "$rhs2Value")
-                builder.appendLine("mov", "$lhsValue", tempRegister)
-            } else if (lhsValue is InStack && rhs2Value !is InRegister) {
-                // TODO must be sized
-                builder.appendLine("sub", "qword $lhsValue", "$rhs2Value")
-            } else {
-                builder.appendLine("sub", "$lhsValue", "$rhs2Value")
-            }
-        } 
+        compileBinaryOperation(builder, "sub", lhsValue, rhs1Value, rhs2Value)
     }
 }

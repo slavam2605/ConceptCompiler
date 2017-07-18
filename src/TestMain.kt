@@ -87,15 +87,24 @@ fun main(args: Array<String>) {
 //            return 1;
 //        }
 //    """)
+//    val stream = CharStreams.fromString("""
+//        fun keks(m: i64, n: i64): i64 {
+//            if m == 0 {
+//                return n + 1;
+//            }
+//            if n == 0 {
+//                return keks(m - 1, 1);
+//            }   
+//            return keks(m - 1, keks(m, n - 1));
+//        }
+//    """)
     val stream = CharStreams.fromString("""
-        fun keks(m: i64, n: i64): i64 {
-            if m == 0 {
-                return n + 1;
-            }
-            if n == 0 {
-                return keks(m - 1, 1);
-            }   
-            return keks(m - 1, keks(m, n - 1));
+        fun keks(x: i64, y: i64): i64 {
+            var a: i64;
+            var b: i64;
+            a = x + y;
+            b = x - y;
+            return (a - y) / (x - b);
         }
     """)
     val parser = DummyLangParser(

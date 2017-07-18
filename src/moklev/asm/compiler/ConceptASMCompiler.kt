@@ -85,8 +85,8 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     println("conflictGraph = $conflictGraph")
     
     val variableAssignment = advancedColorGraph(
-            setOf("rax", "rbx", "rcx", "rdx", "r8", "r9", "r10", "r11").map { InRegister(it) }, // TODO normal registers
-//            setOf("rdi", "rsi").map { InRegister(it) }, // TODO normal registers
+//            listOf(RAX, RBX, RCX, RDX, R8, R9, R10, R11), // TODO normal registers
+            listOf(RDI, RSI), // TODO normal registers
             mapOf(
                     startBlockLabel to intArguments.mapIndexedNotNull { i, s ->
                             val name = externalNames[s] ?: return@mapIndexedNotNull null
