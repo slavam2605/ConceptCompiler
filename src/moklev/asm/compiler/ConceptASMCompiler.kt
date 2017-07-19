@@ -14,6 +14,7 @@ import moklev.utils.ASMBuilder
 // TODO support global variables
 // TODO appropriate spill decisions (loop depth + precolored variables should be able to be spilled), set spill cost
 // TODO eliminate blocks with optimized out instructions
+// TODO support register avoiding (example: avoid using RAX and RDX with `div`)
 
 const val startBlockLabel = ".func_start" 
 const val endBlockLabel = ".func_end"
@@ -33,8 +34,8 @@ object IntArgumentsAssignment {
 }
 
 val calleeToSave = listOf(
-        "rbp", "rbx", "r12", "r13", "r14", "r15"
-).map { InRegister(it) }
+        RBP, RBX, R12, R13, R14, R15
+)
 
 fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     dest.appendLine("global $name")
@@ -85,8 +86,8 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     println("conflictGraph = $conflictGraph")
     
     val variableAssignment = advancedColorGraph(
-//            listOf(RAX, RBX, RCX, RDX, R8, R9, R10, R11), // TODO normal registers
-            listOf(RDI, RSI), // TODO normal registers
+            listOf(RAX, RBX, RCX, RDX, R8, R9, R10, R11), // TODO normal registers
+//            listOf(RDI, RSI), // TODO normal registers
             mapOf(
                     startBlockLabel to intArguments.mapIndexedNotNull { i, s ->
                             val name = externalNames[s] ?: return@mapIndexedNotNull null

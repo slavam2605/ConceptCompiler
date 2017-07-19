@@ -4,6 +4,10 @@ options {
     tokenVocab = DummyLangLexer;
 }
 
+file
+    :   function*
+    ;
+
 function
     :   'fun' IDENT '(' typedIdentList ')' ':' type '{' statement* '}'
     ;
@@ -25,7 +29,8 @@ statement
     |   'for' '(' init=statement ';' cond=expression ';' step=statement ')' '{'
             body+=statement*
         '}'                             #forLoop
-    |   expression                      #exprStatement
+    |   IDENT '(' exprList ')' ';'      #callStatement
+    |   expression ';'                  #exprStatement
     ;
    
 expression
@@ -36,7 +41,7 @@ expression
 //    |   '-' expression
 //    |   '!' expression
 //    |   '*' expression
-    |   left=expression op=('*'|'/') right=expression                           #timesDiv
+    |   left=expression op=('*'|'/'|'%') right=expression                       #timesDiv
     |   left=expression op=('+'|'-') right=expression                           #plusMinus
     |   left=expression op=('<'|'>'|'=='|'!='|'>='|'<=') right=expression       #compareOp
 //    |   left=expression '&&' left=expression

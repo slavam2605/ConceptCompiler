@@ -1,6 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
 import moklev.asm.compiler.Div
+import moklev.asm.compiler.Mod
 import moklev.asm.instructions.Add
 import moklev.asm.instructions.Mul
 import moklev.asm.instructions.Sub
@@ -34,6 +35,7 @@ class BinaryOp(ctx: ParserRuleContext, val op: String, val left: Expression, val
             "*" -> Mul(Variable(result), Variable(leftResult), Variable(rightResult))
             "-" -> Sub(Variable(result), Variable(leftResult), Variable(rightResult))
             "/" -> Div(Variable(result), Variable(leftResult), Variable(rightResult))
+            "%" -> Mod(Variable(result), Variable(leftResult), Variable(rightResult))
             else -> TODO("not implemented")
         })
         return result

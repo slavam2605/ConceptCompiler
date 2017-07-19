@@ -60,7 +60,8 @@ class AssignCall(val funcName: String, lhs: Variable, val args: List<Pair<Type, 
                 currentBlockLabel,
                 liveRange,
                 indexInBlock,
-                lhs.value(variableAssignment[currentBlockLabel]!!)!!
+                lhs.value(variableAssignment[currentBlockLabel]!!)!!,
+                definingVariable = "$lhs"
         )
     }
 }

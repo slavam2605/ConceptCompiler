@@ -14,7 +14,7 @@ fun compileAssign(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAsse
     if (lhs != rhs) {
         if (lhs is InStack && rhs is InStack) {
             // TODO get temp register
-            val tempRegister = "r15"
+            val tempRegister = R15
             builder.appendLine("mov", tempRegister, "$rhs")
             builder.appendLine("mov", "$lhs", tempRegister)
         } else if (lhs is InStack && rhs !is InRegister) {
@@ -94,10 +94,10 @@ fun compilePop(builder: ASMBuilder, value: StaticAssemblyValue) {
 }
 
 val callerToSave = listOf(
-        "rax", "rcx", "rdx",
-        "rdi", "rsi", "rsp",
-        "r8", "r9", "r10", "r11"
-).map { InRegister(it) }
+        RAX, RCX, RDX,
+        RDI, RSI, RSP,
+        R8, R9, R10, R11
+)
 
 fun compileCall(builder: ASMBuilder,
                 funcName: String,
@@ -106,16 +106,18 @@ fun compileCall(builder: ASMBuilder,
                 currentBlockLabel: String,
                 liveRange: Map<String, LiveRange>,
                 indexInBlock: Int,
-                result: StaticAssemblyValue? = null) {
+                result: StaticAssemblyValue? = null,
+                definingVariable: String? = null) {
     val localAssignment = variableAssignment[currentBlockLabel]!!
     val registersToSave = liveRange
             .asSequence()
-            .filter { indexInBlock > it.value.firstIndex && indexInBlock < it.value.lastIndex }
+            .filter { it.key != definingVariable }
+            .filter { indexInBlock >= it.value.firstIndex && indexInBlock < it.value.lastIndex }
             .map { localAssignment[it.key]!! }
             .filterIsInstance<InRegister>()
             .filter { it in callerToSave }
             .toList()
-
+    
     for (register in registersToSave) {
         compilePush(builder, register)
     }
@@ -177,4 +179,67 @@ fun compileCompare(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAss
     }
     
     builder.appendLine("cmp", lhs, rhs)
+}
+
+fun compileDiv(
+        builder: ASMBuilder,
+        lhs1: StaticAssemblyValue?,
+        lhs2: StaticAssemblyValue?,
+        rhs1: StaticAssemblyValue,
+        rhs2: StaticAssemblyValue,
+        localAssignment: Map<String, StaticAssemblyValue>,
+        liveRange: Map<String, LiveRange>,
+        indexInBlock: Int,
+        definingVariable: String? = null
+) {
+    val rdxUsed = liveRange
+            .asSequence()
+            .filter { it.key != definingVariable }
+            .filter { indexInBlock >= it.value.firstIndex && indexInBlock < it.value.lastIndex }
+            .mapNotNull { localAssignment[it.key] }
+            .filterIsInstance<InRegister>()
+            .any { it == RDX }
+
+    val raxUsed = liveRange
+            .asSequence()
+            .filter { it.key != definingVariable }
+            .filter { indexInBlock >= it.value.firstIndex && indexInBlock < it.value.lastIndex }
+            .mapNotNull { localAssignment[it.key] }
+            .filterIsInstance<InRegister>()
+            .any { it == RAX }
+
+    println("kek => " + liveRange.asSequence().filter { it.key != definingVariable }
+            .filter { indexInBlock >= it.value.firstIndex && indexInBlock < it.value.lastIndex }
+            .joinToString { "${it.key} ::: ${localAssignment[it.key]!!}" } + "<< $definingVariable")
+
+    val tempRegister = R15 // TODO normal temp register
+    val tempRegister2 = R14
+    val tempRegister3 = R13
+
+    if (raxUsed)
+        compileAssign(builder, tempRegister2, RAX)
+    if (rdxUsed)
+        compileAssign(builder, tempRegister, RDX)
+    compileAssign(builder, RAX, rhs1)
+
+    val actualRhs2 = if (rhs2 == RDX)
+        tempRegister
+    else if (rhs2 is IntConst) {
+        compileAssign(builder, tempRegister3, rhs2)
+        tempRegister3
+    } else
+        rhs2
+
+    builder.appendLine("cqo")
+    builder.appendLine("idiv", actualRhs2)
+
+    if (lhs1 != null)
+        compileAssign(builder, lhs1, RAX)
+    if (lhs2 != null)
+        compileAssign(builder, lhs2, RDX)
+    
+    if (raxUsed)
+        compileAssign(builder, RAX, tempRegister2)
+    if (rdxUsed)
+        compileAssign(builder, RDX, tempRegister)
 }

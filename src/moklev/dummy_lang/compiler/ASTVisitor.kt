@@ -29,9 +29,14 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.ReturnContext -> visitReturn(ctx)
             is DummyLangParser.IfElseContext -> visitIfElse(ctx)
             is DummyLangParser.ForLoopContext -> visitForLoop(ctx)
-            is DummyLangParser.ExprStatementContext -> visitExprStatement(ctx) 
+            is DummyLangParser.ExprStatementContext -> visitExprStatement(ctx)
+            is DummyLangParser.CallStatementContext -> visitCallStatement(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitCallStatement(ctx: DummyLangParser.CallStatementContext): CallStatement {
+        return CallStatement(ctx, ctx.IDENT().text, visitExprList(ctx.exprList()))
     }
 
     override fun visitExprStatement(ctx: DummyLangParser.ExprStatementContext): Expression {

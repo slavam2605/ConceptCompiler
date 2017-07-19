@@ -98,38 +98,46 @@ fun main(args: Array<String>) {
 //            return keks(m - 1, keks(m, n - 1));
 //        }
 //    """)
-    val stream = CharStreams.fromString("""
-        fun keks(x: i64, y: i64): i64 {
-            var a: i64;
-            var b: i64;
-            a = x + y;
-            b = x - y;
-            return (a - y) / (x - b);
-        }
-    """)
+//    val stream = CharStreams.fromString("""
+//        fun keks(x: i64, y: i64): i64 {
+//            var a: i64;
+//            var b: i64;
+//            a = x + y;
+//            b = x - y;
+//            return (a - y) / (x - b);
+//        }
+//    """)
+    val stream = CharStreams.fromFileName("source.cp")
     val parser = DummyLangParser(
             CommonTokenStream(
                     DummyLangLexer(stream)
             )
     )
-    val function = ASTVisitor.visitFunction(parser.function())
-    val state = CompilationState()
-    val conceptAsmCode = function
-            .compile(state)
-    state.errorList.forEach {
-        println(it)
+    val functions = parser.file().function()
+    val fileBuilder = StringBuilder()
+    for (parseFunction in functions) {
+        val function = ASTVisitor.visitFunction(parseFunction)
+        val state = CompilationState()
+        val conceptAsmCode = function
+                .compile(state)
+        state.errorList.forEach {
+            println(it)
+        }
+        if (state.errorList.size > 0)
+            return
+        val compiledCode = conceptAsmCode.compile()
+        fileBuilder.append(compiledCode).append('\n')
     }
-    if (state.errorList.size > 0)
-        return
-    val compiledCode = conceptAsmCode.compile()
 
 //    val compiledCode = ASMFunction("bar", listOf(Type.INT to "n"), code).compile()
+    
+    val allCode = fileBuilder.toString()
     println("\n========== Compiled code ==========\n")
-    println(compiledCode)
+    println(allCode)
     with(PrintWriter("compiled\\file.asm")) {
         print("BITS 64\n")
         print("extern printInt\n\n")
-        print(compiledCode)
+        print(allCode)
         close()
     }
 }
