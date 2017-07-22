@@ -32,8 +32,10 @@ class Mul(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
         return listOf(this)
     }
 
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
-        return listOf("$lhs" to Either.Right("$rhs1"))
+    override fun coloringPreferences(): List<ColoringPreference> {
+        return listOf(
+                Coalesce("$lhs", "$rhs1")
+        )
     }
 
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {

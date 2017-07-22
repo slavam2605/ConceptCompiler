@@ -192,7 +192,7 @@ fun compileDiv(
         indexInBlock: Int,
         definingVariable: String? = null
 ) {
-    val rdxUsed = liveRange
+    val rdxUsed = rhs2 == RDX || liveRange
             .asSequence()
             .filter { it.key != definingVariable }
             .filter { indexInBlock >= it.value.firstIndex && indexInBlock < it.value.lastIndex }
@@ -208,14 +208,10 @@ fun compileDiv(
             .filterIsInstance<InRegister>()
             .any { it == RAX }
 
-    println("kek => " + liveRange.asSequence().filter { it.key != definingVariable }
-            .filter { indexInBlock >= it.value.firstIndex && indexInBlock < it.value.lastIndex }
-            .joinToString { "${it.key} ::: ${localAssignment[it.key]!!}" } + "<< $definingVariable")
-
     val tempRegister = R15 // TODO normal temp register
     val tempRegister2 = R14
     val tempRegister3 = R13
-
+    
     if (raxUsed)
         compileAssign(builder, tempRegister2, RAX)
     if (rdxUsed)

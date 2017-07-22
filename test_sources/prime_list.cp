@@ -13,7 +13,7 @@ fun prime_test(x: i64): i64 {
 fun keks(n: i64): i64 {
     var i: i64;
     for (i = 2;; i <= n; i = i + 1;) {
-        if prime_test(i) == 1 {
+        if prime_test(i) / 2 == 0 {
             printInt(i);
         }
     }

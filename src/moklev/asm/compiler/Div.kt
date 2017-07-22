@@ -4,6 +4,7 @@ import moklev.asm.instructions.Assign
 import moklev.asm.instructions.BinaryInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
+import moklev.asm.utils.Target
 import moklev.utils.ASMBuilder
 import moklev.utils.Either
 
@@ -24,10 +25,10 @@ class Div(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
         return listOf(this)
     }
 
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+    override fun coloringPreferences(): List<ColoringPreference> {
         return listOf(
-                "$lhs" to Either.Left(RAX),
-                "$rhs1" to Either.Left(RAX)
+                Target("$lhs", RAX),
+                Target("$rhs1", RAX)
         )
     }
 

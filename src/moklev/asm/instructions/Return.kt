@@ -21,9 +21,11 @@ class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endB
 
     override fun simplify(): List<Instruction> = listOf(this)
 
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+    override fun coloringPreferences(): List<ColoringPreference> {
         if (rhs is Variable) {
-            return listOf("$rhs" to Either.Left(RAX))
+            return listOf(
+                    Target("$rhs", RAX)
+            )
         }
         return listOf()
     }

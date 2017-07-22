@@ -5,6 +5,7 @@ import moklev.asm.instructions.Phi
 import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.interfaces.BranchInstruction
 import moklev.asm.utils.*
+import moklev.asm.utils.Target
 import moklev.utils.Either
 import java.util.*
 import kotlin.collections.ArrayList
@@ -114,7 +115,7 @@ fun detectLiveRange(blocks: List<Block>): List<Pair<Block, Map<String, LiveRange
             val allDefinedVariables = ArrayList<Set<String>>()
             for (parentBlock in blocks[j].prevBlocks) {
                 if (parentBlock == blocks[j])
-                    continue 
+                    continue
                 allDefinedVariables.add(definedVariables[parentBlock.label]!!)
             }
             if (allDefinedVariables.isEmpty())
@@ -189,6 +190,7 @@ fun buildConflictGraph(liveRanges: List<Pair<Block, Map<String, LiveRange>>>): G
     }
 
     liveRanges.forEach { (_, map) ->
+        Unit
         for (u in nodes) {
             for (v in nodes) {
                 if (u == v)
@@ -208,6 +210,8 @@ fun buildConflictGraph(liveRanges: List<Pair<Block, Map<String, LiveRange>>>): G
 }
 
 private infix fun LiveRange.intersects(b: LiveRange): Boolean {
+    if (firstIndex == lastIndex || b.firstIndex == b.lastIndex)
+        return false
     return firstIndex in b.firstIndex..(b.lastIndex - 1) ||
             b.firstIndex in firstIndex..(lastIndex - 1)
 }
@@ -292,7 +296,7 @@ fun advancedColorGraph(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
         conflictGraph: Graph,
-        coalescingEdges: Map<String, Set<Pair<String, Either<InRegister, String>>>>,
+        coloringPreferences: Map<String, Set<ColoringPreference>>,
         blocks: List<Block>
 ): VariableAssignment {
     val result = HashMap<String, Coloring>()
@@ -302,7 +306,7 @@ fun advancedColorGraph(
             colors,
             initialColoring,
             conflictGraph,
-            coalescingEdges,
+            coloringPreferences,
             globalLoopSet,
             result
     )
@@ -313,7 +317,7 @@ private fun colorLoopSet(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
         conflictGraph: Graph,
-        coalescingEdges: Map<String, Set<Pair<String, Either<InRegister, String>>>>,
+        coloringPreferences: Map<String, Set<ColoringPreference>>,
         loopSet: LoopSet,
         coloredBlocks: MutableMap<String, Coloring>
 ) {
@@ -324,7 +328,7 @@ private fun colorLoopSet(
                     colors,
                     initialColoring,
                     conflictGraph,
-                    coalescingEdges,
+                    coloringPreferences,
                     loopSet.blocks().toList(),
                     coloredBlocks,
                     failOnStack = false
@@ -337,7 +341,7 @@ private fun colorLoopSet(
                     colors,
                     initialColoring,
                     conflictGraph,
-                    coalescingEdges,
+                    coloringPreferences,
                     loopSet.blocks().toList(),
                     coloredBlocks
             ).map({
@@ -346,7 +350,7 @@ private fun colorLoopSet(
                             colors,
                             initialColoring,
                             conflictGraph,
-                            coalescingEdges,
+                            coloringPreferences,
                             subLoopSet,
                             coloredBlocks
                     )
@@ -364,7 +368,7 @@ private fun colorBlocks(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
         conflictGraph: Graph,
-        coalescingEdges: Map<String, Set<Pair<String, Either<InRegister, String>>>>,
+        coloringPreferences: Map<String, Set<ColoringPreference>>,
         blocks: List<Block>,
         coloredBlocks: Map<String, Coloring>,
         failOnStack: Boolean = true
@@ -399,24 +403,30 @@ private fun colorBlocks(
     }
 
     val coalesce = HashSet<Pair<String, String>>()
-    coalescingEdges.forEach {
+    coloringPreferences.forEach {
         it.value
-                .filter { it.second is Either.Right }
-                .mapTo(coalesce) { it.first to it.second.right() }
+                .filterIsInstance<Coalesce>()
+                .mapTo(coalesce) { it.node to it.other }
     }
-    val targeting = HashSet<Pair<String, InRegister>>()
-    coalescingEdges.forEach {
+    val targeting = ArrayList<Pair<String, InRegister>>()
+    coloringPreferences.forEach {
         it.value
-                .filter { it.second is Either.Left }
-                .mapTo(targeting) { it.first to it.second.left() }
+                .filterIsInstance<Target>()
+                .mapTo(targeting) { it.node to it.register }
+    }
+    val penalty = ArrayList<InRegister>()
+    coloringPreferences.forEach {
+        it.value
+                .filterIsInstance<Avoid>()
+                .mapTo(penalty) { it.register }
     }
 
-    println("[colorBlocks]: coalescingEdges = $coalescingEdges")
+    println("[colorBlocks]: coalescingEdges = $coloringPreferences")
     println("[colorBlocks]: coalesce = $coalesce")
     println("[colorBlocks]: targeting = $targeting")
 
     var currentGraph = conflictGraph
-    var bestColoring = colorBlocks(colors, currentColoring, targeting, conflictGraph, blocks, coloredBlocks, failOnStack)
+    var bestColoring = colorBlocks(colors, currentColoring, targeting, penalty, conflictGraph, blocks, coloredBlocks, failOnStack)
             .map({
                 return Either.Left(Unit)
             }) { it }.right()
@@ -455,6 +465,7 @@ private fun colorBlocks(
                     colors,
                     currentColoring,
                     targeting,
+                    penalty,
                     newGraph,
                     blocks,
                     coloredBlocks,
@@ -522,7 +533,8 @@ private fun colorBlocks(
 private fun colorBlocks(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
-        targeting: Set<Pair<String, InRegister>>,
+        targeting: List<Pair<String, InRegister>>,
+        penalty: List<InRegister>,
         conflictGraph: Graph,
         blocks: List<Block>,
         coloredBlocks: Map<String, Coloring>,
@@ -572,10 +584,25 @@ private fun colorBlocks(
     for ((_, coloring) in initialColoring) {
         for ((variable, _) in coloring) {
             val index = nodeToIndex[variable] ?: continue
-            spillCost[index] = Int.MAX_VALUE
+            spillCost[index] = Int.MAX_VALUE // TODO only first 6 arguments must not be spilled
         }
     }
 
+    for ((_, coloring1) in initialColoring) {
+        for ((variable1, color1) in coloring1) {
+            for ((_, coloring2) in initialColoring) {
+                for ((variable2, color2) in coloring2) {
+                    if (color1 != color2) {
+                        val index1 = nodeToIndex[variable1] ?: continue
+                        val index2 = nodeToIndex[variable2] ?: continue
+                        matrix[index1][index2] = true
+                        matrix[index2][index1] = true
+                    }
+                }
+            }
+        }
+    }
+    
     println("Coloring: ${(0..nbNodes - 1).map { indexToNode[it] }}")
     val result = colorGraph(nbColors, nbNodes, matrix, spillCost)
 
@@ -588,7 +615,7 @@ private fun colorBlocks(
                 throw IllegalArgumentException("Conflicting initial coloring")
             indexToColor[result[nodeIndex]] = color
             remainingColors.remove(color)
-            println("${result[nodeIndex]} <= $color")
+            println("${result[nodeIndex]} <= $color // $variable")
             println("remain: $remainingColors")
         }
     }
@@ -597,19 +624,41 @@ private fun colorBlocks(
     val resultColoring = HashMap<String, StaticAssemblyValue>()
 
     nodes.forEachIndexed { index, node ->
+        // TODO separate function for stack coloring
         fun preferredColor(): StaticAssemblyValue? {
-            var preferredColor: StaticAssemblyValue? = targeting.firstOrNull { it.first == node }?.second
+            val colorPriority = hashMapOf<InRegister, Int>()
+            remainingColors.forEach { color ->
+                colorPriority[color] = 0
+            }
+            targeting
+                    .mapNotNull { (variable, color) ->
+                        if (variable == node) color else null
+                    }
+                    .forEach { color ->
+                        val currentPriority = colorPriority.get(color) ?: return@forEach
+                        colorPriority[color] = currentPriority + 1
+                    }
             if (startBlock?.usedVariables?.contains(node) ?: false) {
-                preferredColor = startBlock!!.prevBlocks
+                startBlock!!.prevBlocks
                         .asSequence()
                         .mapNotNull { coloredBlocks[it.label] }
                         .mapNotNull { it[node] }
+                        .filterIsInstance<InRegister>()
                         .groupingBy { it }
                         .eachCount()
-                        .maxBy { it.value }
-                        ?.key
+                        .forEach { color, count ->
+                            val currentPriority = colorPriority.get(color) ?: return@forEach
+                            colorPriority[color] = currentPriority + count
+                        }
             }
-            return preferredColor
+            penalty.forEach { color ->
+                val currentPriority = colorPriority.get(color) ?: return@forEach
+                colorPriority[color] = currentPriority - 1
+            }
+
+            println("Preferred[$node]: $colorPriority")
+            
+            return colorPriority.maxBy { it.value }?.key
         }
 
 

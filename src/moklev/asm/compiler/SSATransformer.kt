@@ -1,9 +1,6 @@
 package moklev.asm.compiler
 
-import moklev.asm.instructions.Assign
-import moklev.asm.instructions.ExternalAssign
-import moklev.asm.instructions.Jump
-import moklev.asm.instructions.Phi
+import moklev.asm.instructions.*
 import moklev.asm.interfaces.*
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
@@ -66,7 +63,9 @@ object SSATransformer {
         val blocks = extractBlocks(instructions)
         val startBlock = Block(startBlockLabel, ArrayDeque())
         for (argument in functionArguments) {
-            startBlock.instructions.add(ExternalAssign(Variable(argument)))
+            val external = Variable(argument)
+            startBlock.instructions.add(ExternalAssign(external))
+            startBlock.instructions.add(NotPropagatableAssign(Variable(argument), external))
         }
         startBlock.instructions.add(Jump(blocks[0].label))
         val endBlock = Block(endBlockLabel, ArrayDeque())

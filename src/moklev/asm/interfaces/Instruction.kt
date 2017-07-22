@@ -5,7 +5,6 @@ import moklev.asm.compiler.SSATransformer
 import moklev.asm.instructions.Phi
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
-import moklev.utils.Either
 
 /**
  * @author Vyacheslav Moklev
@@ -51,11 +50,11 @@ sealed class Instruction {
     )
 
     /**
-     * Define all pairs of variables or variable-register that can be coalesced
+     * Define all coloring preferences defined by this instruction
      *
-     * @return list of pairs: variable to variable or variable to register
+     * @return list of coloring preferences
      */
-    abstract fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>>
+    abstract fun coloringPreferences(): List<ColoringPreference>
 }
 
 /**
@@ -142,7 +141,7 @@ class Label(val name: String) : Instruction() {
     override val usedValues = emptyList<CompileTimeValue>()
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
     override fun simplify() = listOf(this)
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
+    override fun coloringPreferences(): List<ColoringPreference> = emptyList()
     override fun compile(
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
@@ -162,7 +161,7 @@ class RawTextInstruction(val name: String) : Instruction() {
 
     override fun simplify(): List<Instruction> = listOf(this)
 
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
+    override fun coloringPreferences(): List<ColoringPreference> = emptyList()
 
     override fun compile(
             builder: ASMBuilder,

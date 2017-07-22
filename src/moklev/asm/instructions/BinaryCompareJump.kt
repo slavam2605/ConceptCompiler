@@ -4,7 +4,6 @@ import moklev.asm.interfaces.BranchInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
-import moklev.utils.Either
 
 /**
  * @author Vyacheslav Moklev
@@ -53,7 +52,7 @@ class BinaryCompareJump(val op: String, val rhs1: CompileTimeValue, val rhs2: Co
         return listOf(this)
     }
 
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> = emptyList()
+    override fun coloringPreferences(): List<ColoringPreference> = emptyList()
 
     override fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>, destLabel: String) {
         val rhs1Value = rhs1.value(variableAssignment)!!

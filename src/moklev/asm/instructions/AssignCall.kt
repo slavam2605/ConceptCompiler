@@ -26,16 +26,16 @@ class AssignCall(val funcName: String, lhs: Variable, val args: List<Pair<Type, 
 
     override fun simplify() = listOf(this)
 
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
-        val result = ArrayList<Pair<String, Either<InRegister, String>>>()
-        result.add("$lhs" to Either.Left(RAX)) // TODO depend on type
+    override fun coloringPreferences(): List<ColoringPreference> {
+        val result = ArrayList<ColoringPreference>()
+        result.add(Target("$lhs", RAX)) // TODO depend on type
         args
                 .asSequence()
                 .filter { it.first == Type.INT }
                 .take(6)
                 .mapIndexedNotNullTo(result) { i, pair ->
                     val variable = pair.second as? Variable ?: return@mapIndexedNotNullTo null
-                    "$variable" to Either.Left<InRegister, String>(IntArgumentsAssignment[i] as InRegister)
+                    Target("$variable", IntArgumentsAssignment[i] as InRegister)
                 }
                 .toList()
         return result

@@ -24,10 +24,10 @@ class Mod(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
         return listOf(this)
     }
 
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+    override fun coloringPreferences(): List<ColoringPreference> {
         return listOf(
-                "$lhs" to Either.Left(RDX),
-                "$rhs1" to Either.Left(RAX)
+                Target("$lhs", RDX),
+                Target("$rhs1", RAX)
         )
     }
 

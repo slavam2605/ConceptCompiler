@@ -26,14 +26,14 @@ class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) :
 
     override fun simplify() = listOf(this)
 
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+    override fun coloringPreferences(): List<ColoringPreference> {
         return args
                 .asSequence()
                 .filter { it.first == Type.INT }
                 .take(6)
                 .mapIndexedNotNull { i, pair ->
                     val variable = pair.second as? Variable ?: return@mapIndexedNotNull null
-                    "$variable" to Either.Left<InRegister, String>(IntArgumentsAssignment[i] as InRegister)
+                    Target("$variable", IntArgumentsAssignment[i] as InRegister)
                 }
                 .toList()
     }

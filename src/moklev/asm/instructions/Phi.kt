@@ -2,10 +2,7 @@ package moklev.asm.instructions
 
 import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.interfaces.Instruction
-import moklev.asm.utils.CompileTimeValue
-import moklev.asm.utils.InRegister
-import moklev.asm.utils.StaticAssemblyValue
-import moklev.asm.utils.Variable
+import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
 import moklev.utils.Either
 
@@ -45,12 +42,12 @@ class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : Assi
         return listOf(this)
     }
 
-    override fun coalescingEdges(): List<Pair<String, Either<InRegister, String>>> {
+    override fun coloringPreferences(): List<ColoringPreference> {
         return pairs
                 .asSequence()
                 .map { it.second }
                 .filterIsInstance<Variable>()
-                .map { "$lhs" to Either.Right<InRegister, String>("$it") }
+                .map { Coalesce("$lhs", "$it") }
                 .toList()
     }
 
