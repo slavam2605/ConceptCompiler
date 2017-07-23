@@ -31,8 +31,13 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.ForLoopContext -> visitForLoop(ctx)
             is DummyLangParser.ExprStatementContext -> visitExprStatement(ctx)
             is DummyLangParser.CallStatementContext -> visitCallStatement(ctx)
+            is DummyLangParser.DerefStoreContext -> visitDerefStore(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitDerefStore(ctx: DummyLangParser.DerefStoreContext): DerefStore {
+        return DerefStore(ctx, visitExpression(ctx.addr), visitExpression(ctx.value))
     }
 
     override fun visitCallStatement(ctx: DummyLangParser.CallStatementContext): CallStatement {
@@ -83,8 +88,13 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.CompareOpContext -> visitCompareOp(ctx)
             is DummyLangParser.CallContext -> visitCall(ctx)
             is DummyLangParser.ParenExpressionContext -> visitParenExpression(ctx)
+            is DummyLangParser.DerefLoadContext -> visitDerefLoad(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitDerefLoad(ctx: DummyLangParser.DerefLoadContext): DerefLoad {
+        return DerefLoad(ctx, visitExpression(ctx.expression()))
     }
 
     override fun visitParenExpression(ctx: DummyLangParser.ParenExpressionContext): Expression {

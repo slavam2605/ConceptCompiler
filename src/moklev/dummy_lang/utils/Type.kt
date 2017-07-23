@@ -17,3 +17,5 @@ sealed class Type {
         }
     }
 }
+
+val INT_64 = Type.PrimitiveType("i64")

@@ -88,15 +88,23 @@ This table contains a full set of Concept-ASM instructions:
 | Instruction                | Mnemonic               |            Description            |
 |----------------------------|:----------------------:|-----------------------------------|
 | Add(x, y, z)               | `x = y + z`            | Sum of two numbers                |
+| Sub(x, y, z)               | `x = y - z`            | Subtraction of two numbers        |
+| Mul(x, y, z)               | `x = y * z`            | Product of two numbers            |
+| Div(x, y, z)               | `x = y / z`            | Quotient of two numbers           |
+| Mod(x, y, z)               | `x = y / z`            | Remainder of two numbers          |
 | Jump(label)                | `goto label`           | Unconditional branch              |
-| IfGreaterJump(x, y, label) | `if (x > y) goto label`| Conditional (if greater) branch   |
+| BinaryCompareJump(x, y, op, label) | `if (x op y) goto label`| Conditional (>, >=, <, <=, ==, !=) branch |
 | Assign(x, y)               | `x = y`                | Assignment of variables           |
 | Call(f, x, y, z, ...)      | `f(x, y, z, ...)`      | Call of subroutine                |
+| AssignCall(f, a, x, y, ...)| `a = f(x, y, ...)`     | Get value of function             |
 | Phi(x, [L1, y1], ..., [Ln, yn]) | —                | Phi node in SSA graph             |
 | Return(x)                  | `return x`             | Return the value from function    |
+| Load(x, y)                 | `x = *y`               | Load from memory                  |
+| Store(x, y)                | `*x = y`               | Store to memory                   |
 
 Internal instructions:
 
 | Instruction                |                       Description                          |
 |----------------------------|------------------------------------------------------------|
 | ExternalAssign(x)          | Marks `x` as externally initialized variable               |
+| NotPropagatableAssign(x, y)| Assign `x := y` and not propagation due to optimization phase|

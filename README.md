@@ -15,6 +15,7 @@ This repository contains several tools for compiling some languages to x86-64 as
         * Spilling
         * Coloring with regard to loops
         * Targeting
+        * Register avoiding
         * Node coalescing
 * Dummy lang
     * Quite simple higher-level language to test capabilities of Concept ASM

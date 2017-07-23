@@ -18,25 +18,27 @@ typedIdentList
     ;
 
 statement
-    :   'var' IDENT ':' type ';'        #varDef
-    |   IDENT '=' expression ';'        #assign
-    |   'return' expression ';'         #return
+    :   'var' IDENT ':' type ';'                        #varDef
+    |   IDENT '=' expression ';'                        #assign
+    |   '*' addr=expression '=' value=expression ';'    #derefStore
+    |   'return' expression ';'                         #return
     |   'if' expression '{'                
             ifTrue+=statement*
         '}' ('else' '{'
             ifFalse+=statement*
-        '}')?                           #ifElse
+        '}')?                                           #ifElse
     |   'for' '(' init=statement ';' cond=expression ';' step=statement ')' '{'
             body+=statement*
-        '}'                             #forLoop
-    |   IDENT '(' exprList ')' ';'      #callStatement
-    |   expression ';'                  #exprStatement
+        '}'                                             #forLoop
+    |   IDENT '(' exprList ')' ';'                      #callStatement
+    |   expression ';'                                  #exprStatement
     ;
    
 expression
     :   INT_LITERAL                                                             #intConst
     |   IDENT '(' exprList ')'                                                  #call
     |   IDENT                                                                   #variable
+    |   '*' expression                                                          #derefLoad
     |   '(' expression ')'                                                      #parenExpression
 //    |   '-' expression
 //    |   '!' expression

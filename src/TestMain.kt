@@ -12,12 +12,13 @@ import java.io.PrintWriter
  * @author Moklev Vyacheslav
  */
 fun main(args: Array<String>) {
-    val stream = CharStreams.fromFileName("test_sources/prime_list.cp")
+    val stream = CharStreams.fromFileName("test_sources/prime_sieve.cp")
     val parser = DummyLangParser(
             CommonTokenStream(
                     DummyLangLexer(stream)
             )
     )
+
     val functions = parser.file().function()
     val fileBuilder = StringBuilder()
     for (parseFunction in functions) {
@@ -39,7 +40,10 @@ fun main(args: Array<String>) {
     println(allCode)
     with(PrintWriter("compiled\\file.asm")) {
         print("BITS 64\n")
-        print("extern printInt\n\n")
+        print("extern printInt\n")
+        print("extern malloc\n")
+        print("extern free\n")
+        print("\n")
         print(allCode)
         close()
     }

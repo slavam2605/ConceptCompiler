@@ -66,6 +66,7 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     println("\n^^^^^^^^^ End of code ^^^^^^^^^\n")
 
     val liveRanges = detectLiveRange(blocks)
+    println("LIVE_KEKES: ${liveRanges.map { it.first.label to it.second }}")
     val conflictGraph = buildConflictGraph(liveRanges)
     val coalescingEdges = blocks
             .asSequence()

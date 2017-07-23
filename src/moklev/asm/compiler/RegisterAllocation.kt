@@ -145,16 +145,24 @@ fun detectLiveRange(blocks: List<Block>): List<Pair<Block, Map<String, LiveRange
             val variable = it
             val isDeadInBlock = block.nextBlocks.all { variable !in liveVariables[it.label]!! }
             variable to LiveRange(
-                    block.instructions.indexOfFirst {
-                        it !is Phi && it is AssignInstruction && it.lhs.toString() == variable ||
-                                it is BranchInstruction && run {
-                                    val branch = it
-                                    val destBlock = blocks.first { it.label == branch.label }
-                                    destBlock.instructions
-                                            .filterIsInstance<Phi>()
-                                            .any { "${it.lhs}" == variable }
-                                }
-                    }.let { if (it == -1) 0 else it },
+                    run {
+                        if (block.prevBlocks
+                                .asSequence()
+                                .map { it.label }
+                                .any { variable in liveVariables[it]!! })
+                            0
+                        else
+                            block.instructions.indexOfFirst {
+                                it !is Phi && it is AssignInstruction && it.lhs.toString() == variable ||
+                                        it is BranchInstruction && run {
+                                            val branch = it
+                                            val destBlock = blocks.first { it.label == branch.label }
+                                            destBlock.instructions
+                                                    .filterIsInstance<Phi>()
+                                                    .any { "${it.lhs}" == variable }
+                                        }
+                            }.let { if (it == -1) 0 else it }
+                    },
                     if (isDeadInBlock)
                         block.instructions.indexOfLast {
                             it.usedValues.any { it is Variable && it.toString() == variable } ||
@@ -165,13 +173,13 @@ fun detectLiveRange(blocks: List<Block>): List<Pair<Block, Map<String, LiveRange
                                                 .filterIsInstance<Phi>()
                                                 .any {
                                                     it.pairs.firstOrNull {
-                                                        it.second is Variable && "$it" == variable
+                                                        it.second is Variable && "${it.second}" == variable
                                                     } != null
                                                 }
                                     }
                         }
                     else
-                        block.instructions.size - 1,
+                        block.instructions.size,
                     isDeadInBlock
             )
         }.toMap()
@@ -602,7 +610,7 @@ private fun colorBlocks(
             }
         }
     }
-    
+
     println("Coloring: ${(0..nbNodes - 1).map { indexToNode[it] }}")
     val result = colorGraph(nbColors, nbNodes, matrix, spillCost)
 
@@ -657,7 +665,7 @@ private fun colorBlocks(
             }
 
             println("Preferred[$node]: $colorPriority")
-            
+
             return colorPriority.maxBy { it.value }?.key
         }
 

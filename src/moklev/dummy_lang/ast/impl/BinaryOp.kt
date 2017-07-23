@@ -1,7 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
-import moklev.asm.compiler.Div
-import moklev.asm.compiler.Mod
+import moklev.asm.instructions.Div
+import moklev.asm.instructions.Mod
 import moklev.asm.instructions.Add
 import moklev.asm.instructions.Mul
 import moklev.asm.instructions.Sub

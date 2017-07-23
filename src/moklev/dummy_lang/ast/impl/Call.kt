@@ -6,6 +6,7 @@ import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.compiler.Scope
 import moklev.dummy_lang.utils.FunctionBuilder
+import moklev.dummy_lang.utils.INT_64
 import moklev.dummy_lang.utils.Type
 import org.antlr.v4.runtime.ParserRuleContext
 
@@ -26,6 +27,6 @@ class Call(ctx: ParserRuleContext, val name: String, val arguments: List<Express
     }
 
     override fun getType(state: CompilationState, scope: Scope): Type? {
-        return Type.PrimitiveType("i64") // TODO create table of defined functions
+        return INT_64 // TODO create table of defined functions
     }
 }
