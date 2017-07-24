@@ -1,6 +1,7 @@
 import moklev.asm.compiler.compile
 import moklev.dummy_lang.compiler.ASTVisitor
 import moklev.dummy_lang.compiler.CompilationState
+import moklev.dummy_lang.compiler.Scope
 import moklev.dummy_lang.parser.DummyLangLexer
 import moklev.dummy_lang.parser.DummyLangParser
 import org.antlr.v4.runtime.CharStreams
@@ -21,16 +22,18 @@ fun main(args: Array<String>) {
 
     val functions = parser.file().function()
     val fileBuilder = StringBuilder()
-    for (parseFunction in functions) {
+    val state = CompilationState()
+    val scope = Scope()
+    val asmFunctions = functions.map { parseFunction ->
         val function = ASTVisitor.visitFunction(parseFunction)
-        val state = CompilationState()
-        val conceptAsmCode = function
-                .compile(state)
-        state.errorList.forEach {
-            println(it)
-        }
-        if (state.errorList.size > 0)
-            return
+        function.compile(state, scope)
+    }
+    state.errorList.forEach {
+        println(it)
+    }
+    if (state.errorList.size > 0)
+        return
+    asmFunctions.forEach { conceptAsmCode ->
         val compiledCode = conceptAsmCode.compile()
         fileBuilder.append(compiledCode).append('\n')
     }

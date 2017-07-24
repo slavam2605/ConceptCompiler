@@ -39,6 +39,7 @@ expression
     |   IDENT '(' exprList ')'                                                  #call
     |   IDENT                                                                   #variable
     |   '*' expression                                                          #derefLoad
+    |   '(' type ')' expression                                                 #typeCast
     |   '(' expression ')'                                                      #parenExpression
 //    |   '-' expression
 //    |   '!' expression
@@ -55,6 +56,7 @@ exprList
     ;
 
 type
-    :   'i64'
+    :   type '*'
+    |   'i64'
     |   'bool'
     ;

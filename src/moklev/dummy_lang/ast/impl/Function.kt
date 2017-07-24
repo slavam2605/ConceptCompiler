@@ -19,12 +19,13 @@ class Function(
         val resultType: Type,
         val statements: List<Statement>
 ) : ASTNode(ctx) {
-    fun compile(state: CompilationState): ASMFunction {
+    fun compile(state: CompilationState, scope: Scope): ASMFunction {
         val builder = FunctionBuilder(name, arguments)
-        val scope = Scope(resultType, arguments)
+        scope.enterFunction(ctx, state, name, resultType, arguments)
         statements.forEach {
             it.compile(builder, state, scope)
         }
+        scope.leaveFunction()
         return builder.build()
     }
 }

@@ -27,6 +27,10 @@ class Call(ctx: ParserRuleContext, val name: String, val arguments: List<Express
     }
 
     override fun getType(state: CompilationState, scope: Scope): Type? {
-        return INT_64 // TODO create table of defined functions
+        val type = scope.getFunctionSignature(name)?.second
+        if (type == null) {
+            state.addError(ctx, "Function \"$name\" was not defined")
+        }
+        return type
     }
 }

@@ -6,7 +6,6 @@ import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.compiler.Scope
 import moklev.dummy_lang.utils.FunctionBuilder
-import moklev.dummy_lang.utils.INT_64
 import moklev.dummy_lang.utils.Type
 import org.antlr.v4.runtime.ParserRuleContext
 
@@ -21,5 +20,12 @@ class DerefLoad(ctx: ParserRuleContext, val addr: Expression) : Expression(ctx) 
         return result
     }
 
-    override fun getType(state: CompilationState, scope: Scope): Type? = INT_64 // TODO infer proper type
+    override fun getType(state: CompilationState, scope: Scope): Type? {
+        val addrType = addr.getType(state, scope)
+        if (addrType is Type.PointerType) {
+            return addrType.sourceType
+        }
+        state.addError(ctx, "Dereferencing of a not-pointer type $addrType")
+        return null
+    }
 }

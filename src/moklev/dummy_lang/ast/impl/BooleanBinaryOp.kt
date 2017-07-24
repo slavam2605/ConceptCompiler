@@ -21,6 +21,10 @@ class BooleanBinaryOp(ctx: ParserRuleContext, val op: String, val left: Expressi
             labelIfTrue: String,
             labelIfFalse: String
     ) {
+        // TODO improve type check
+        left.getType(state, scope)
+        right.getType(state, scope)
+        
         val leftValue = left.compileResult(builder, state, scope)
         val rightValue = right.compileResult(builder, state, scope)
         builder.add(BinaryCompareJump(op, Variable(leftValue), Variable(rightValue), labelIfTrue))

@@ -8,12 +8,17 @@ sealed class Type {
         override fun toString(): String = typeName
     }
     
+    data class PointerType(val sourceType: Type) : Type() {
+        override fun toString(): String = "$sourceType*"
+    }
+    
     fun toASMType(): moklev.asm.utils.Type {
         return when (this) {
             is PrimitiveType -> when (typeName) {
                 "i64" -> moklev.asm.utils.Type.INT
                 else -> error("Unknown primitive type")
             }
+            is PointerType -> moklev.asm.utils.Type.INT
         }
     }
 }

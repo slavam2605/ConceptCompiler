@@ -28,12 +28,16 @@ class ForLoop(
         val loopCond = builder.tempLabel
         val loopBody = builder.tempLabel
         val afterLoop = builder.tempLabel
+        scope.enterLocalScope()
         init.compile(builder, state, scope)
         builder.add(Label(loopCond))
         cond.compileBranch(builder, state, scope, loopBody, afterLoop)
         builder.add(Label(loopBody))
+        scope.enterLocalScope()
         body.forEach { it.compile(builder, state, scope) }
+        scope.leaveLocalScope()
         step.compile(builder, state, scope)
+        scope.leaveLocalScope()
         builder
                 .add(Jump(loopCond))
                 .add(Label(afterLoop))

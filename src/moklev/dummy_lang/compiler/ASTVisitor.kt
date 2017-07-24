@@ -89,8 +89,13 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.CallContext -> visitCall(ctx)
             is DummyLangParser.ParenExpressionContext -> visitParenExpression(ctx)
             is DummyLangParser.DerefLoadContext -> visitDerefLoad(ctx)
+            is DummyLangParser.TypeCastContext -> visitTypeCast(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitTypeCast(ctx: DummyLangParser.TypeCastContext): TypeCast {
+        return TypeCast(ctx, visitType(ctx.type()), visitExpression(ctx.expression()))
     }
 
     override fun visitDerefLoad(ctx: DummyLangParser.DerefLoadContext): DerefLoad {
@@ -138,6 +143,9 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
     }
 
     override fun visitType(ctx: DummyLangParser.TypeContext): Type {
+        if (ctx.type() != null) {
+            return Type.PointerType(visitType(ctx.type()))
+        }
         return Type.PrimitiveType(ctx.text)
     }
 }

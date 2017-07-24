@@ -10,7 +10,7 @@ import moklev.utils.ASMBuilder
  */
 class BinaryCompareJump(val op: String, val rhs1: CompileTimeValue, val rhs2: CompileTimeValue, label: String) : BranchInstruction(label) {
     companion object {
-        val instruction = hashMapOf( // TODO maybe change instructions
+        val instruction = hashMapOf(// TODO maybe change instructions
                 "==" to "je",
                 "!=" to "jne",
                 ">" to "jg",
@@ -18,22 +18,22 @@ class BinaryCompareJump(val op: String, val rhs1: CompileTimeValue, val rhs2: Co
                 "<" to "jl",
                 "<=" to "jle"
         )
-        
-        val intComparator = hashMapOf<String, BinaryPredicate<Int, Int>>(
-                "==" to BinaryPredicate { a, b -> a == b },
-                "!=" to BinaryPredicate { a, b -> a != b },
-                ">" to BinaryPredicate { a, b -> a > b },
-                ">=" to BinaryPredicate { a, b -> a >= b },
-                "<" to BinaryPredicate { a, b -> a < b },
-                "<=" to BinaryPredicate { a, b -> a <= b }
+
+        val intComparator = hashMapOf<String, (Int, Int) -> Boolean>(
+                "==" to { a, b -> a == b },
+                "!=" to { a, b -> a != b },
+                ">" to { a, b -> a > b },
+                ">=" to { a, b -> a >= b },
+                "<" to { a, b -> a < b },
+                "<=" to { a, b -> a <= b }
         )
     }
-    
+
     init {
         if (op !in instruction)
             error("$op is not valid operator")
     }
-    
+
     override fun toString() = "if ($rhs1 $op $rhs2) goto $label"
     override val usedValues = listOf(rhs1, rhs2)
 
@@ -44,7 +44,7 @@ class BinaryCompareJump(val op: String, val rhs1: CompileTimeValue, val rhs2: Co
     override fun simplify(): List<Instruction> {
         if (rhs1 is IntConst && rhs2 is IntConst) {
             val comparator = intComparator[op]!!
-            if (comparator.test(rhs1.value, rhs2.value))
+            if (comparator.invoke(rhs1.value, rhs2.value))
                 return listOf(Jump(label))
             else
                 return emptyList()
