@@ -12,16 +12,30 @@ import java.util.*
 
 fun compileAssign(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAssemblyValue) {
     if (lhs != rhs) {
-        if (lhs is InStack && rhs is InStack) {
-            // TODO get temp register
-            val tempRegister = R15
-            builder.appendLine("mov", tempRegister, "$rhs")
-            builder.appendLine("mov", "$lhs", tempRegister)
-        } else if (lhs is InStack && rhs !is InRegister) {
-            // TODO must be typed or at least sized
-            builder.appendLine("mov", lhs, rhs)
-        } else {
-            builder.appendLine("mov", lhs, rhs)
+        when {
+            lhs is InStack && rhs is InStack -> {
+                // TODO get temp register
+                val tempRegister = R15
+                builder.appendLine("mov", tempRegister, "$rhs")
+                builder.appendLine("mov", "$lhs", tempRegister)
+            }
+            lhs is InStack && rhs is X86AddrConst -> {
+                // TODO get temp register
+                val tempRegister = R15
+                builder.appendLine("lea", tempRegister, "$rhs")
+                builder.appendLine("mov", "$lhs", tempRegister)
+            }
+            lhs is InStack && (rhs is IntConst || rhs is InRegister) -> {
+                // TODO must be typed or at least sized
+                builder.appendLine("mov", lhs, rhs)
+            }
+            lhs is InRegister && (rhs is InStack || rhs is InRegister || rhs is IntConst) -> {
+                builder.appendLine("mov", lhs, rhs)
+            }
+            lhs is InRegister && rhs is X86AddrConst -> {
+                builder.appendLine("lea", lhs, rhs)
+            }
+            else -> error("Not supported: assign(${lhs.javaClass}, ${rhs.javaClass})")
         }
     }
 }
@@ -238,4 +252,18 @@ fun compileDiv(
         compileAssign(builder, RAX, tempRegister2)
     if (rdxUsed)
         compileAssign(builder, RDX, tempRegister)
+}
+
+fun compileStore(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAssemblyValue) {
+    val tempRegister = R15
+    val actualRhs = if (rhs is InStack || rhs is X86AddrConst) {
+        compileAssign(builder, tempRegister, rhs)
+        tempRegister
+    } else rhs
+    
+    if (lhs is X86AddrConst) {
+        builder.appendLine("mov", "qword $lhs", actualRhs)
+    } else {
+        builder.appendLine("mov", "qword [$lhs]", actualRhs)
+    }
 }

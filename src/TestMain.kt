@@ -8,12 +8,11 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import java.io.PrintWriter
 
-
 /**
  * @author Moklev Vyacheslav
  */
 fun main(args: Array<String>) {
-    val stream = CharStreams.fromFileName("test_sources/prime_sieve.cp")
+    val stream = CharStreams.fromFileName("test_sources/prime_list.cp")
     val parser = DummyLangParser(
             CommonTokenStream(
                     DummyLangLexer(stream)

@@ -22,6 +22,7 @@ class Return(ctx: ParserRuleContext, val result: Expression) : Statement(ctx) {
             return
         }
         val resultName = result.compileResult(builder, state, scope)
+        scope.freeAllAllocatedStacks(builder)
         builder.add(Return(Type.INT, Variable(resultName))) // TODO lol get type somehow
     }
 }

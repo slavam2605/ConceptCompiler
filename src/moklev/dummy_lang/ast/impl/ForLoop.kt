@@ -1,6 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
 import moklev.asm.instructions.Jump
+import moklev.asm.instructions.StackFree
 import moklev.asm.interfaces.Label
 import moklev.dummy_lang.ast.interfaces.BooleanExpression
 import moklev.dummy_lang.ast.interfaces.Expression
@@ -35,9 +36,9 @@ class ForLoop(
         builder.add(Label(loopBody))
         scope.enterLocalScope()
         body.forEach { it.compile(builder, state, scope) }
-        scope.leaveLocalScope()
+        scope.leaveLocalScope(builder)
         step.compile(builder, state, scope)
-        scope.leaveLocalScope()
+        scope.leaveLocalScope(builder)
         builder
                 .add(Jump(loopCond))
                 .add(Label(afterLoop))

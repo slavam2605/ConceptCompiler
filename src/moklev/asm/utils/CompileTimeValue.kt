@@ -25,33 +25,8 @@ sealed class CompileTimeValue {
 /**
  * Variable in the IR (Concept-ASM)
  */
-class Variable(val name: String) : CompileTimeValue() {
-    var version: Int = 0
-
-    constructor(name: String, version: Int) : this(name) {
-        this.version = version
-    }
-
+data class Variable(val name: String, var version: Int = 0) : CompileTimeValue() {
     override fun toString() = "$name${if (version > 0) ".$version" else ""}"
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other?.javaClass != javaClass) return false
-
-        other as Variable
-
-        if (name != other.name) return false
-        if (version != other.version) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = name.hashCode()
-        result = 31 * result + version
-        return result
-    }
-
 }
 
 /**
@@ -60,7 +35,7 @@ class Variable(val name: String) : CompileTimeValue() {
  */
 object Undefined : CompileTimeValue() {
     override fun toString() = "[undefined]"
-    
+
     override fun equals(other: Any?): Boolean {
         return other is Undefined
     }
@@ -74,102 +49,60 @@ sealed class StaticAssemblyValue : CompileTimeValue()
 /**
  * Location of variable in integer register with name [register]
  */
-class InRegister(val register: String) : StaticAssemblyValue() {
+data class InRegister(val register: String) : StaticAssemblyValue() {
     override fun toString(): String = register
-    
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other?.javaClass != javaClass) return false
-
-        other as InRegister
-
-        return register == other.register
-    }
-
-    override fun hashCode(): Int {
-        return register.hashCode()
-    }
 }
 
 /**
  * Location of variable on stack in [rbp - [offset]]
  */
-class InStack(val offset: Int) : StaticAssemblyValue() {
+data class InStack(val offset: Int) : StaticAssemblyValue() {
     override fun toString(): String = "qword [rbp - $offset]"
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other?.javaClass != javaClass) return false
-
-        other as InStack
-
-        return offset == other.offset
-
-    }
-
-    override fun hashCode(): Int {
-        return offset
-    }
 }
 
 /**
  * Static integer constant value
  */
-class IntConst(val value: Int) : StaticAssemblyValue() {
+data class IntConst(val value: Int) : StaticAssemblyValue() {
     override fun toString(): String = "$value"
-    
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other?.javaClass != javaClass) return false
+}
 
-        other as IntConst
-
-        return value == other.value
+/**
+ * x86 address representation: [[baseRegister] + [offsetRegister] * [offsetFactor] + [offset]]
+ */
+data class X86AddrConst(val baseRegister: InRegister?,
+                   val offsetRegister: InRegister?,
+                   val offsetFactor: Int,
+                   val offset: Int) : StaticAssemblyValue() {
+    override fun toString(): String = when {
+        baseRegister != null && offsetRegister != null ->
+            "[$baseRegister ${sign(offsetFactor)} $offsetRegister * ${Math.abs(offsetFactor)} ${sign(offset)} ${Math.abs(offset)}]"
+        baseRegister != null ->
+            "[$baseRegister ${sign(offset)} ${Math.abs(offset)}]"
+        offsetRegister != null ->
+            "[$offsetFactor * $offsetRegister ${sign(offset)} ${Math.abs(offset)}]"
+        else ->
+            "[$offset]"
     }
 
-    override fun hashCode(): Int {
-        return value
+    private fun sign(value: Int): Char = when {
+        value >= 0 -> '+'
+        else -> '-'
     }
 }
 
 /**
  * Static float constant value
  */
-class FloatConst(val value: Float) : StaticAssemblyValue() {
+data class FloatConst(val value: Float) : StaticAssemblyValue() {
     override fun toString(): String = "$value"
-    
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other?.javaClass != javaClass) return false
-
-        other as FloatConst
-
-        return value == other.value
-    }
-
-    override fun hashCode(): Int {
-        return value.hashCode()
-    }
 }
 
 /**
  * Static double constant value
  */
-class DoubleConst(val value: Double) : StaticAssemblyValue() {
+data class DoubleConst(val value: Double) : StaticAssemblyValue() {
     override fun toString(): String = "$value"
-    
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other?.javaClass != javaClass) return false
-
-        other as DoubleConst
-
-        return value == other.value
-    }
-
-    override fun hashCode(): Int {
-        return value.hashCode()
-    }
 }
 
 // Useful constants

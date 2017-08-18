@@ -20,6 +20,7 @@ object SSATransformer {
         val usedVariables = HashSet<String>()
         val localVariables = HashSet<String>()
         val lastVariableVersions = HashMap<String, Int>()
+        var initStackOffset: Int = -1
 
         fun addNextBlock(block: Block) {
             nextBlocks.add(block)
@@ -37,6 +38,8 @@ object SSATransformer {
                 nextBlockLabel: String?,
                 liveRanges: Map<String, Map<String, LiveRange>>
         ) {
+            val localAssignment = variableAssignment[label]!!
+            println("KEYS[$label] = ${localAssignment.keys}")
             // TODO handle nextBlockLabel to avoid needless last jump to adjacent block
             val localLiveRange = liveRanges[label]!!
             builder.label(label)
@@ -57,15 +60,49 @@ object SSATransformer {
                     .filterIsInstance<AssignInstruction>()
                     .mapTo(usedVariables) { "${it.lhs}" }
         }
+
+        fun propagateInitStackOffset() {
+            val blockMap = nextBlocks
+                    .asSequence()
+                    .map { it.label to it }
+                    .toMap()
+            var stackOffset = initStackOffset
+            for (instruction in instructions) {
+                if (instruction is StackAlloc)
+                    stackOffset += instruction.size
+                if (instruction is StackFree)
+                    stackOffset -= instruction.size
+                if (instruction is BranchInstruction) {
+                    val block = blockMap[instruction.label]!!
+                    if (block.initStackOffset < 0) {
+                        block.initStackOffset = stackOffset
+                    }
+                    if (block.initStackOffset != stackOffset) {
+                        error("Different offsets for block [${block.label}]: ${block.initStackOffset} and $stackOffset")
+                    }
+                }
+            }
+        }
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other?.javaClass != javaClass) return false
+            other as Block
+            return label == other.label
+        }
+
+        override fun hashCode(): Int {
+            return label.hashCode()
+        }
     }
 
-    fun transform(instructions: List<Instruction>, functionArguments: List<String>): List<Block> {
+    fun transform(instructions: List<Instruction>, functionArguments: List<String>): Pair<Int, List<Block>> {
         val blocks = extractBlocks(instructions)
         val startBlock = Block(startBlockLabel, ArrayDeque())
-        for (argument in functionArguments) {
+        functionArguments.forEachIndexed { index, argument ->
             val external = Variable(argument)
-            startBlock.instructions.add(ExternalAssign(external))
-            startBlock.instructions.add(NotPropagatableAssign(Variable(argument), external))
+            startBlock.instructions.add(StackAlloc(external, 8)) // TODO size of type
+            startBlock.instructions.add(Store(external, IntArgumentsAssignment[index])) // TODO index must be among int arguments, valid only for ints
         }
         startBlock.instructions.add(Jump(blocks[0].label))
         val endBlock = Block(endBlockLabel, ArrayDeque())
@@ -75,6 +112,32 @@ object SSATransformer {
         connectBlocks(blocks)
 
         blocks.forEach { println(it) }
+
+        calcStackOffsets(blocks)
+
+        for (block in blocks) {
+            println("BLOCK_STACK[${block.label}] = ${block.initStackOffset}")
+        }
+
+        var maxStackOffset = 0
+        for (block in blocks) {
+            val newInstructions = arrayListOf<Instruction>()
+            var currentStackOffset = block.initStackOffset
+            for (instruction in block.instructions) {
+                if (instruction is StackAlloc) {
+                    currentStackOffset += instruction.size
+                    newInstructions.add(Assign(
+                            instruction.lhs,
+                            X86AddrConst(RBP, null, 0, -currentStackOffset)
+                    ))
+                } else if (instruction !is StackFree) {
+                    newInstructions.add(instruction)
+                }
+            }
+            block.instructions.clear()
+            block.instructions.addAll(newInstructions)
+            maxStackOffset = maxOf(maxStackOffset, currentStackOffset)
+        }
 
         val nonLocalVariables = defineNonLocalVariables(blocks)
 
@@ -120,7 +183,25 @@ object SSATransformer {
             block.instructions.addAll(list)
         }
 
-        return blocks
+        return maxStackOffset to blocks
+    }
+
+    private fun calcStackOffsets(blocks: List<Block>) {
+        val used = hashSetOf(startBlockLabel)
+        val startBlock = blocks.first { it.label == startBlockLabel }
+        startBlock.initStackOffset = 0
+        val queue = ArrayDeque<Block>()
+        queue.addLast(startBlock)
+        while (queue.isNotEmpty()) {
+            val block = queue.pollFirst()
+            block.propagateInitStackOffset()
+            for (nextBlock in block.nextBlocks) {
+                if (nextBlock.label !in used) {
+                    used.add(nextBlock.label)
+                    queue.addLast(nextBlock)
+                }
+            }
+        }
     }
 
     private fun defineNonLocalVariables(blocks: MutableList<Block>): Collection<String> {
@@ -144,25 +225,54 @@ object SSATransformer {
         var currentList = ArrayDeque<Instruction>()
         var lastLabel = StaticUtils.nextLabel()
         val blocks = mutableListOf<Block>()
+        var tempLabel = 0
+        var finishBlock = false
         for (instruction in instructions) {
             when (instruction) {
                 is Label -> {
                     if (currentList.isNotEmpty()) {
                         val currentLast = currentList.last
-                        if (currentLast !is Jump) {
+                        if (currentLast !is UnconditionalBranch) {
                             currentList.add(Jump(instruction.name))
                         }
                         blocks.add(Block(lastLabel, currentList))
                         currentList = ArrayDeque<Instruction>()
                     }
                     lastLabel = instruction.name
+                    finishBlock = false
+                }
+                is BranchInstruction -> {
+                    finishBlock = true
+                    currentList.add(instruction)
                 }
                 else -> {
+                    if (finishBlock) {
+                        val newLabel = ".TL$tempLabel"
+                        tempLabel++
+                        val currentLast = currentList.last
+                        if (currentLast !is UnconditionalBranch) {
+                            currentList.add(Jump(newLabel))
+                        }
+                        blocks.add(Block(lastLabel, currentList))
+                        currentList = ArrayDeque<Instruction>()
+                        lastLabel = newLabel
+                        finishBlock = false
+                    }
                     currentList.add(instruction)
                 }
             }
         }
         blocks.add(Block(lastLabel, currentList))
+        for (block in blocks) {
+            val firstUnconditionalBranchIndex = block.instructions
+                    .mapIndexed { index, instruction -> index to instruction }
+                    .first { (_, instruction) -> instruction is UnconditionalBranch }
+                    .first
+            val toDrop = block.instructions.size - firstUnconditionalBranchIndex - 1
+            for (counter in 0..toDrop - 1) {
+                block.instructions.removeLast()
+            }
+        }
         return blocks
     }
 
@@ -215,15 +325,12 @@ object SSATransformer {
                             .map { "$it" }
                             .filter { it != lhsName }
                 }
-        
+
         val result = ArrayList<Block>()
         var eliminated = false
         for (block in blocks) {
             val newBlock = Block(block.label, ArrayDeque())
             for (instruction in block.instructions) {
-                if (instruction is Assign && assignMap.containsKey(instruction.lhs)) {
-                    continue
-                }
                 if (instruction is AssignInstruction && "${instruction.lhs}" !in rightUsedVariables) {
                     eliminated = true
                     continue

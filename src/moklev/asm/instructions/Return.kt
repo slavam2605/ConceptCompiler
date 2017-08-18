@@ -3,6 +3,7 @@ package moklev.asm.instructions
 import moklev.asm.compiler.endBlockLabel
 import moklev.asm.interfaces.BranchInstruction
 import moklev.asm.interfaces.Instruction
+import moklev.asm.interfaces.UnconditionalBranch
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
 import moklev.utils.Either
@@ -10,7 +11,7 @@ import moklev.utils.Either
 /**
  * @author Moklev Vyacheslav
  */
-class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endBlockLabel) {
+class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endBlockLabel), UnconditionalBranch {
     override val usedValues: List<CompileTimeValue> = listOf(rhs) 
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {

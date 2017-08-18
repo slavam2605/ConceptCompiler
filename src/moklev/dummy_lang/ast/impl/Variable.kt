@@ -1,5 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
+import moklev.asm.instructions.Load
+import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.compiler.Scope
@@ -20,6 +22,8 @@ class Variable(ctx: ParserRuleContext, val name: String) : Expression(ctx) {
     }
 
     override fun compileResult(builder: FunctionBuilder, state: CompilationState, scope: Scope): String {
-        return name
+        val result = builder.tempVar
+        builder.add(Load(Variable(result), Variable(name)))
+        return result
     }
 }

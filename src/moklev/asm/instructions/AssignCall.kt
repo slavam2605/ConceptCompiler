@@ -6,22 +6,22 @@ import moklev.asm.compiler.SSATransformer
 import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
+import moklev.asm.utils.Target
 import moklev.utils.ASMBuilder
-import moklev.utils.Either
 
 /**
  * Call of function with result
  * 
  * @author Moklev Vyacheslav
  */
-class AssignCall(val funcName: String, lhs: Variable, val args: List<Pair<Type, CompileTimeValue>>) : AssignInstruction(lhs) {
+class AssignCall(lhs: Variable, val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : AssignInstruction(lhs) {
     override fun toString() = "$lhs = call $funcName(${args.joinToString()})"
 
     override val usedValues = args.map { it.second }
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
         val newArgs = args.map { it.first to if (it.second == variable) value else it.second }
-        return AssignCall(funcName, lhs, newArgs)
+        return AssignCall(lhs, funcName, newArgs)
     }
 
     override fun simplify() = listOf(this)

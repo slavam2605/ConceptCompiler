@@ -31,12 +31,12 @@ class IfElse(
         builder.add(Label(ifTrueLabel))
         scope.enterLocalScope()
         ifTrue.forEach { it.compile(builder, state, scope) }
-        scope.leaveLocalScope()
+        scope.leaveLocalScope(builder)
         builder.add(Jump(afterLabel))
         builder.add(Label(ifFalseLabel))
         scope.enterLocalScope()
         ifFalse.forEach { it.compile(builder, state, scope) }
-        scope.leaveLocalScope()
+        scope.leaveLocalScope(builder)
         builder.add(Jump(afterLabel))
         builder.add(Label(afterLabel))
     }

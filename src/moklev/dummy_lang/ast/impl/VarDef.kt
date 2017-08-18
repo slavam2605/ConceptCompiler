@@ -1,5 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
+import moklev.asm.instructions.StackAlloc
+import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Statement
 import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.compiler.Scope
@@ -16,5 +18,7 @@ class VarDef(ctx: ParserRuleContext, val name: String, val type: Type) : Stateme
         if (defined) {
             state.addWarning(ctx, "Shadowing: variable $name was already defined")
         }
+        // TODO type.sizeOf()
+        builder.add(StackAlloc(Variable(name), 8))
     }
 }

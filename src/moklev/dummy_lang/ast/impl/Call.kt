@@ -6,7 +6,6 @@ import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.compiler.Scope
 import moklev.dummy_lang.utils.FunctionBuilder
-import moklev.dummy_lang.utils.INT_64
 import moklev.dummy_lang.utils.Type
 import org.antlr.v4.runtime.ParserRuleContext
 
@@ -22,7 +21,7 @@ class Call(ctx: ParserRuleContext, val name: String, val arguments: List<Express
             type.toASMType() to Variable(result)
         }
         val result = builder.tempVar
-        builder.add(AssignCall(name, Variable(result), typedResults))
+        builder.add(AssignCall(Variable(result), name, typedResults))
         return result
     }
 

@@ -17,7 +17,7 @@ import org.antlr.v4.runtime.ParserRuleContext
 abstract class BooleanExpression(ctx: ParserRuleContext) : Expression(ctx) {
     abstract fun compileBranch(builder: FunctionBuilder, state: CompilationState, scope: Scope, labelIfTrue: String, labelIfFalse: String)
 
-    override fun getType(state: CompilationState, scope: Scope): Type = Type.PrimitiveType("bool")
+    override fun getType(state: CompilationState, scope: Scope): Type = Type.PrimitiveType("bool", 8) // TODO not 8
 
     override fun compileResult(builder: FunctionBuilder, state: CompilationState, scope: Scope): String {
         val setOne = builder.tempLabel

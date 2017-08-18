@@ -9,7 +9,7 @@ import moklev.utils.ASMBuilder
  * @author Moklev Vyacheslav
  */
 class Load(lhs: Variable, val rhs: CompileTimeValue) : AssignInstruction(lhs) {
-    override fun toString(): String = "$lhs = [$rhs]"
+    override fun toString(): String = "$lhs = load $rhs"
     
     override val usedValues: List<CompileTimeValue> = listOf(rhs)
 
@@ -37,7 +37,11 @@ class Load(lhs: Variable, val rhs: CompileTimeValue) : AssignInstruction(lhs) {
         compileAssign(builder, actualLhs, lhs)
         compileAssign(builder, actualRhs, rhs)
         
-        builder.appendLine("mov", actualLhs, "qword [$actualRhs]")
+        if (actualRhs is X86AddrConst) {
+            builder.appendLine("mov", actualLhs, "qword $actualRhs")
+        } else {
+            builder.appendLine("mov", actualLhs, "qword [$actualRhs]")   
+        }
         
         compileAssign(builder, lhs, actualLhs)
     }

@@ -4,6 +4,7 @@ import moklev.asm.instructions.ExternalAssign
 import moklev.asm.interfaces.RawTextInstruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
+import java.util.*
 
 /**
  * @author Moklev Vyacheslav
@@ -41,9 +42,8 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     dest.appendLine("global $name")
     dest.appendLine("$name:")
 
-    val blocks = SSATransformer.performOptimizations(
-            SSATransformer.transform(instructions, arguments.map { it.second })
-    )
+    val (maxStackOffset, blockList) = SSATransformer.transform(instructions, arguments.map { it.second })
+    val blocks = SSATransformer.performOptimizations(blockList)
     
     val externalNames = HashMap<String, String>()
     for (block in blocks) {
@@ -95,6 +95,7 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
                             name to IntArgumentsAssignment[i] 
                         }.toMap() 
             ),
+            maxStackOffset,
             conflictGraph,
             coalescingEdges,
             blocks

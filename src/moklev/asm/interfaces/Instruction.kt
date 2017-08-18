@@ -176,3 +176,8 @@ class RawTextInstruction(val name: String) : Instruction() {
 
     override fun toString(): String = name
 }
+
+/**
+ * Marker interface for unconditional branch instructions
+ */
+interface UnconditionalBranch

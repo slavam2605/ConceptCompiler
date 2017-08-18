@@ -11,7 +11,7 @@ import moklev.utils.ASMBuilder
  * @author Moklev Vyacheslav
  */
 class Store(val lhsAddr: CompileTimeValue, val rhs: CompileTimeValue) : ReadonlyInstruction() {
-    override fun toString(): String = "[$lhsAddr] = $rhs"
+    override fun toString(): String = "store $lhsAddr, $rhs"
     
     override val usedValues: List<CompileTimeValue> = listOf(lhsAddr, rhs)
 
@@ -42,6 +42,6 @@ class Store(val lhsAddr: CompileTimeValue, val rhs: CompileTimeValue) : Readonly
         compileAssign(builder, actualLhsAddr, lhsAddr)
         compileAssign(builder, actualRhs, rhs)
         
-        builder.appendLine("mov", "qword [$actualLhsAddr]", rhs)
+        compileStore(builder, actualLhsAddr, rhs)
     }
 }

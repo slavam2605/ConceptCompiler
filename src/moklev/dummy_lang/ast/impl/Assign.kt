@@ -1,6 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
 import moklev.asm.instructions.Assign
+import moklev.asm.instructions.Store
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.ast.interfaces.Statement
@@ -21,6 +22,6 @@ class Assign(ctx: ParserRuleContext, val varName: String, val expression: Expres
             return
         }
         val result = expression.compileResult(builder, state, scope)
-        builder.add(Assign(Variable(varName), Variable(result))) 
+        builder.add(Store(Variable(varName), Variable(result))) 
     }
 }

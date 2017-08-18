@@ -303,6 +303,7 @@ private fun detectLoops(blocks: List<Block>): List<LoopSet> {
 fun advancedColorGraph(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
+        usedStackOffset: Int,
         conflictGraph: Graph,
         coloringPreferences: Map<String, Set<ColoringPreference>>,
         blocks: List<Block>
@@ -313,6 +314,7 @@ fun advancedColorGraph(
     colorLoopSet(
             colors,
             initialColoring,
+            usedStackOffset,
             conflictGraph,
             coloringPreferences,
             globalLoopSet,
@@ -324,6 +326,7 @@ fun advancedColorGraph(
 private fun colorLoopSet(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
+        usedStackOffset: Int,
         conflictGraph: Graph,
         coloringPreferences: Map<String, Set<ColoringPreference>>,
         loopSet: LoopSet,
@@ -335,6 +338,7 @@ private fun colorLoopSet(
             val coloring = colorBlocks(
                     colors,
                     initialColoring,
+                    usedStackOffset,
                     conflictGraph,
                     coloringPreferences,
                     loopSet.blocks().toList(),
@@ -348,6 +352,7 @@ private fun colorLoopSet(
             colorBlocks(
                     colors,
                     initialColoring,
+                    usedStackOffset,
                     conflictGraph,
                     coloringPreferences,
                     loopSet.blocks().toList(),
@@ -357,6 +362,7 @@ private fun colorLoopSet(
                     colorLoopSet(
                             colors,
                             initialColoring,
+                            usedStackOffset,
                             conflictGraph,
                             coloringPreferences,
                             subLoopSet,
@@ -375,6 +381,7 @@ private fun colorLoopSet(
 private fun colorBlocks(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
+        usedStackOffset: Int,
         conflictGraph: Graph,
         coloringPreferences: Map<String, Set<ColoringPreference>>,
         blocks: List<Block>,
@@ -434,7 +441,7 @@ private fun colorBlocks(
     println("[colorBlocks]: targeting = $targeting")
 
     var currentGraph = conflictGraph
-    var bestColoring = colorBlocks(colors, currentColoring, targeting, penalty, conflictGraph, blocks, coloredBlocks, failOnStack)
+    var bestColoring = colorBlocks(colors, currentColoring, usedStackOffset, targeting, penalty, conflictGraph, blocks, coloredBlocks, failOnStack)
             .map({
                 return Either.Left(Unit)
             }) { it }.right()
@@ -472,6 +479,7 @@ private fun colorBlocks(
             val coloring = colorBlocks(
                     colors,
                     currentColoring,
+                    usedStackOffset,
                     targeting,
                     penalty,
                     newGraph,
@@ -541,6 +549,7 @@ private fun colorBlocks(
 private fun colorBlocks(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
+        usedStackOffset: Int,
         targeting: List<Pair<String, InRegister>>,
         penalty: List<InRegister>,
         conflictGraph: Graph,
@@ -631,6 +640,10 @@ private fun colorBlocks(
     val reservedOffsets = HashSet<Int>()
     val resultColoring = HashMap<String, StaticAssemblyValue>()
 
+    for (i in 1..usedStackOffset) {
+        reservedOffsets.add(i)
+    }
+    
     nodes.forEachIndexed { index, node ->
         // TODO separate function for stack coloring
         fun preferredColor(): StaticAssemblyValue? {
@@ -669,13 +682,12 @@ private fun colorBlocks(
             return colorPriority.maxBy { it.value }?.key
         }
 
-
         val colorIndex = result[index]
         if (colorIndex < 0) {
             if (failOnStack)
                 return Either.Left(Unit)
             val preferredColor = preferredColor() as? InStack
-            if (preferredColor != null) {
+            if (preferredColor != null && preferredColor.offset !in reservedOffsets) {
                 resultColoring[node] = preferredColor
                 reservedOffsets.add(preferredColor.offset)
             }
@@ -692,6 +704,7 @@ private fun colorBlocks(
     println(Arrays.toString(result))
 
     nodes.forEachIndexed { index, node ->
+        println("NODES: '$node'")
         val colorIndex = result[index]
         if (colorIndex < 0) {
             if (resultColoring[node] == null) {

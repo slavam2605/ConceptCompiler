@@ -146,6 +146,6 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
         if (ctx.type() != null) {
             return Type.PointerType(visitType(ctx.type()))
         }
-        return Type.PrimitiveType(ctx.text)
+        return Type.PrimitiveType(ctx.text, 8) // TODO not 8
     }
 }
