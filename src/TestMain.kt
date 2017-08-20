@@ -12,7 +12,7 @@ import java.io.PrintWriter
  * @author Moklev Vyacheslav
  */
 fun main(args: Array<String>) {
-    val stream = CharStreams.fromFileName("test_sources/prime_list.cp")
+    val stream = CharStreams.fromFileName("test_sources/pointer_test.cp")
     val parser = DummyLangParser(
             CommonTokenStream(
                     DummyLangLexer(stream)

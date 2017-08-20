@@ -34,7 +34,6 @@ class Load(lhs: Variable, val rhs: CompileTimeValue) : AssignInstruction(lhs) {
         val actualLhs = if (lhs is InStack) tempRegister1 else lhs
         val actualRhs = if (rhs is InStack) tempRegister2 else rhs
         
-        compileAssign(builder, actualLhs, lhs)
         compileAssign(builder, actualRhs, rhs)
         
         if (actualRhs is X86AddrConst) {

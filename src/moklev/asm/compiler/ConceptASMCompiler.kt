@@ -65,6 +65,9 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
 
     println("\n^^^^^^^^^ End of code ^^^^^^^^^\n")
 
+//    if (name != "index")
+//        System.exit(0)
+    
     val liveRanges = detectLiveRange(blocks)
     println("LIVE_KEKES: ${liveRanges.map { it.first.label to it.second }}")
     val conflictGraph = buildConflictGraph(liveRanges)
@@ -105,8 +108,9 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
         println("$a: $b")
     }
 
-    var stackUsed = false
+    var stackUsed = true // TODO: detect if stack is used
     val registersToSave = HashSet<String>()
+    registersToSave.add("rbp") // TODO the same
     for ((_, assignment) in variableAssignment) {
         for (register in calleeToSave) {
             val values = HashSet(assignment.values)

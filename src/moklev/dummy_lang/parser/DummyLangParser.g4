@@ -19,8 +19,7 @@ typedIdentList
 
 statement
     :   'var' IDENT ':' type ';'                        #varDef
-    |   IDENT '=' expression ';'                        #assign
-    |   '*' addr=expression '=' value=expression ';'    #derefStore
+    |   expression '=' expression ';'                   #assign
     |   'return' expression ';'                         #return
     |   'if' expression '{'                
             ifTrue+=statement*
@@ -38,7 +37,8 @@ expression
     :   INT_LITERAL                                                             #intConst
     |   IDENT '(' exprList ')'                                                  #call
     |   IDENT                                                                   #variable
-    |   '*' expression                                                          #derefLoad
+    |   '*' expression                                                          #dereference
+    |   '&' expression                                                          #addressOf
     |   '(' type ')' expression                                                 #typeCast
     |   '(' expression ')'                                                      #parenExpression
 //    |   '-' expression

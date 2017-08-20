@@ -588,7 +588,6 @@ private fun colorBlocks(
     }
 
     nodes.forEachIndexed { from, node ->
-        println(node)
         val neighbours = conflictGraph.edges[node]!!
         for (other in neighbours) {
             val to = nodeToIndex[other] ?: continue
@@ -677,8 +676,6 @@ private fun colorBlocks(
                 colorPriority[color] = currentPriority - 1
             }
 
-            println("Preferred[$node]: $colorPriority")
-
             return colorPriority.maxBy { it.value }?.key
         }
 
@@ -704,7 +701,6 @@ private fun colorBlocks(
     println(Arrays.toString(result))
 
     nodes.forEachIndexed { index, node ->
-        println("NODES: '$node'")
         val colorIndex = result[index]
         if (colorIndex < 0) {
             if (resultColoring[node] == null) {

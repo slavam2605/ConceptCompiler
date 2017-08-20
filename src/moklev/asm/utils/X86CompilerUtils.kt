@@ -141,9 +141,11 @@ fun compileCall(builder: ASMBuilder,
             .filter { it.first == Type.INT }
             .map { it.second }
 
+    val reassignmentList = arrayListOf<Pair<StaticAssemblyValue, StaticAssemblyValue>>()
     intArguments.forEachIndexed { i, arg ->
-        compileAssign(builder, IntArgumentsAssignment[i], arg.value(localAssignment)!!)
+        reassignmentList.add(arg.value(localAssignment)!! to IntArgumentsAssignment[i])
     }
+    compileReassignment(builder, reassignmentList)
 
     builder.appendLine("call", funcName)
     if (result != null) {

@@ -13,6 +13,8 @@ MOD:        '%';
 
 OROR:       '||';
 ANDAND:     '&&';
+OR:         '|';
+AND:        '&';
 NOT:        '!';
 
 EQUALS:     '==';

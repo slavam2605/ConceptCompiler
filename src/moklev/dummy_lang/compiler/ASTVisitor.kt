@@ -31,13 +31,8 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.ForLoopContext -> visitForLoop(ctx)
             is DummyLangParser.ExprStatementContext -> visitExprStatement(ctx)
             is DummyLangParser.CallStatementContext -> visitCallStatement(ctx)
-            is DummyLangParser.DerefStoreContext -> visitDerefStore(ctx)
             else -> error("Branch is not supported")
         }
-    }
-
-    override fun visitDerefStore(ctx: DummyLangParser.DerefStoreContext): DerefStore {
-        return DerefStore(ctx, visitExpression(ctx.addr), visitExpression(ctx.value))
     }
 
     override fun visitCallStatement(ctx: DummyLangParser.CallStatementContext): CallStatement {
@@ -72,7 +67,7 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
     }
 
     override fun visitAssign(ctx: DummyLangParser.AssignContext): Assign {
-        return Assign(ctx, ctx.IDENT().text, visitExpression(ctx.expression()))
+        return Assign(ctx, visitExpression(ctx.expression(0)), visitExpression(ctx.expression(1)))
     }
 
     override fun visitReturn(ctx: DummyLangParser.ReturnContext): Return {
@@ -88,8 +83,9 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.CompareOpContext -> visitCompareOp(ctx)
             is DummyLangParser.CallContext -> visitCall(ctx)
             is DummyLangParser.ParenExpressionContext -> visitParenExpression(ctx)
-            is DummyLangParser.DerefLoadContext -> visitDerefLoad(ctx)
+            is DummyLangParser.DereferenceContext-> visitDereference(ctx)
             is DummyLangParser.TypeCastContext -> visitTypeCast(ctx)
+            is DummyLangParser.AddressOfContext -> visitAddressOf(ctx)
             else -> error("Branch is not supported")
         }
     }
@@ -98,8 +94,12 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
         return TypeCast(ctx, visitType(ctx.type()), visitExpression(ctx.expression()))
     }
 
-    override fun visitDerefLoad(ctx: DummyLangParser.DerefLoadContext): DerefLoad {
-        return DerefLoad(ctx, visitExpression(ctx.expression()))
+    override fun visitDereference(ctx: DummyLangParser.DereferenceContext): Dereference {
+        return Dereference(ctx, visitExpression(ctx.expression()))
+    }
+
+    override fun visitAddressOf(ctx: DummyLangParser.AddressOfContext): AddressOf {
+        return AddressOf(ctx, visitExpression(ctx.expression()))
     }
 
     override fun visitParenExpression(ctx: DummyLangParser.ParenExpressionContext): Expression {
