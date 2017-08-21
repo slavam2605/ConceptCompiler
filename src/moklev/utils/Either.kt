@@ -39,6 +39,13 @@ sealed class Either<out A, out B> {
         }
     }
     
+    inline fun <X> mapJoin(f: (A) -> X, g: (B) -> X): X {
+        return when (this) {
+            is Left -> f(value)
+            is Right -> g(value)
+        }
+    }
+    
     fun left(): A {
         return when (this) {
             is Left -> value

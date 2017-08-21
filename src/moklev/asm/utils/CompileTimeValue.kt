@@ -57,7 +57,7 @@ data class InRegister(val register: String) : StaticAssemblyValue() {
  * Location of variable on stack in [rbp - [offset]]
  */
 data class InStack(val offset: Int) : StaticAssemblyValue() {
-    override fun toString(): String = "qword [rbp - $offset]"
+    override fun toString(): String = "qword [rbp ${if (offset < 0) "+" else "-"} ${Math.abs(offset)}]"
 }
 
 /**

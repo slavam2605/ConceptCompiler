@@ -140,17 +140,30 @@ fun compileCall(builder: ASMBuilder,
             .asSequence()
             .filter { it.first == Type.INT }
             .map { it.second }
+            .toList()
 
     val reassignmentList = arrayListOf<Pair<StaticAssemblyValue, StaticAssemblyValue>>()
     intArguments.forEachIndexed { i, arg ->
-        reassignmentList.add(arg.value(localAssignment)!! to IntArgumentsAssignment[i])
+        val dest = IntArgumentsAssignment[i]
+        if (dest is InRegister)
+            reassignmentList.add(arg.value(localAssignment)!! to dest)
     }
+    var pushedSize = 0
+    for (i in (0 until intArguments.size).reversed()) {
+        val dest = IntArgumentsAssignment[i]
+        if (dest is InStack) {
+            builder.appendLine("push", intArguments[i])
+            pushedSize += 8 // TODO always 8?
+        }
+    }
+    
     compileReassignment(builder, reassignmentList)
 
     builder.appendLine("call", funcName)
-    if (result != null) {
+    if (pushedSize > 0) 
+        builder.appendLine("add", RSP, pushedSize)
+    if (result != null)
         compileAssign(builder, result, RAX)
-    }
 
     for (register in registersToSave.asReversed()) {
         compilePop(builder, register)

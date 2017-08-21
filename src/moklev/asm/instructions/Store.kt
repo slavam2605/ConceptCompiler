@@ -34,14 +34,6 @@ class Store(val lhsAddr: CompileTimeValue, val rhs: CompileTimeValue) : Readonly
         val lhsAddr = lhsAddr.value(localAssignment)!!
         val rhs = rhs.value(localAssignment)!!
         
-        val tempRegister1 = R15
-        val tempRegister2 = R14
-        val actualLhsAddr = if (lhsAddr is InStack) tempRegister1 else lhsAddr
-        val actualRhs = if (rhs is InStack) tempRegister2 else rhs
-        
-        compileAssign(builder, actualLhsAddr, lhsAddr)
-        compileAssign(builder, actualRhs, rhs)
-        
-        compileStore(builder, actualLhsAddr, rhs)
+        compileStore(builder, lhsAddr, rhs)
     }
 }

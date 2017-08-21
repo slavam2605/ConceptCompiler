@@ -21,7 +21,13 @@ object SSATransformer {
         val localVariables = HashSet<String>()
         val lastVariableVersions = HashMap<String, Int>()
         var initStackOffset: Int = -1
+        var maxStackOffset: Int = 0
 
+        constructor(block: Block, instructions: ArrayDeque<Instruction> = ArrayDeque()) : this(block.label, instructions) {
+            initStackOffset = block.initStackOffset
+            maxStackOffset = block.maxStackOffset
+        }
+        
         fun addNextBlock(block: Block) {
             nextBlocks.add(block)
             block.prevBlocks.add(this)
@@ -72,6 +78,8 @@ object SSATransformer {
                     stackOffset += instruction.size
                 if (instruction is StackFree)
                     stackOffset -= instruction.size
+                if (stackOffset > maxStackOffset)
+                    maxStackOffset = stackOffset
                 if (instruction is BranchInstruction) {
                     val block = blockMap[instruction.label]!!
                     if (block.initStackOffset < 0) {
@@ -329,7 +337,7 @@ object SSATransformer {
         val result = ArrayList<Block>()
         var eliminated = false
         for (block in blocks) {
-            val newBlock = Block(block.label, ArrayDeque())
+            val newBlock = Block(block)
             for (instruction in block.instructions) {
                 if (instruction is AssignInstruction && "${instruction.lhs}" !in rightUsedVariables) {
                     eliminated = true
@@ -350,7 +358,7 @@ object SSATransformer {
         val result = ArrayList<Block>()
         blocks.mapTo(result) { block ->
             Block(
-                    block.label,
+                    block,
                     ArrayDeque(block.instructions.flatMap { it.simplify() })
             )
         }
@@ -386,7 +394,7 @@ object SSATransformer {
                     newInstructions.add(instruction)
                 }
             }
-            newBlocks.add(Block(block.label, newInstructions))
+            newBlocks.add(Block(block, newInstructions))
             for (nextBlock in block.nextBlocks) {
                 if (nextBlock.label !in seen) {
                     queue.add(nextBlock)

@@ -29,7 +29,7 @@ object IntArgumentsAssignment {
             3 -> RCX
             4 -> R8
             5 -> R9
-            else -> InStack(8 * (index - 5))
+            else -> InStack(-8 * (index - 4)) // TODO WAT
         }
     }
 }
@@ -108,9 +108,15 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
         println("$a: $b")
     }
 
-    var stackUsed = true // TODO: detect if stack is used
+    var stackUsed = false 
     val registersToSave = HashSet<String>()
-    registersToSave.add("rbp") // TODO the same
+    for (block in blocks) {
+        println("BLOCK//${block.label}// -> ${block.maxStackOffset}")
+        if (block.maxStackOffset > 0) {
+            registersToSave.add("rbp")
+            stackUsed = true
+        }
+    }
     for ((_, assignment) in variableAssignment) {
         for (register in calleeToSave) {
             val values = HashSet(assignment.values)
@@ -135,7 +141,10 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
                 }
             }
         }
-        maxOffset = maxOffset + (maxOffset and 15)
+        blocks.forEach { 
+            maxOffset = maxOf(maxOffset, it.maxStackOffset)
+        }
+        maxOffset += (maxOffset and 15)
         if (maxOffset > 0) {
             startBlock.instructions.addFirst(RawTextInstruction("sub rsp, $maxOffset"))
         }
