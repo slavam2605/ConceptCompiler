@@ -90,18 +90,18 @@ internal open class RunnerTestBase: TestBase() {
         assertEquals("Exit code must be zero", 0, result.exitCode)
     }
     
-    protected fun parseIntResults(result: ProcessResult): List<Int> {
+    protected fun parseIntResults(result: ProcessResult): List<Long> {
         val parts = result.output.trim().split(' ', '\t', '\r', '\n')
         return parts.map { part ->
             try {
-                part.toInt()
+                part.toLong()
             } catch (e: NumberFormatException) {
                 fail("Part of output is not an integer: \"$part\"")
             }
         }
     }
     
-    protected fun assertIntResults(source: String, vararg results: Int) {
+    protected fun assertIntResults(source: String, vararg results: Long) {
         val processResult = assertCompiles(source)
         assertZeroExitCode(processResult)
         val intResults = parseIntResults(processResult)

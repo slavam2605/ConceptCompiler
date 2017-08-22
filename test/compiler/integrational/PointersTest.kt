@@ -72,4 +72,24 @@ internal class PointersTest : RunnerTestBase() {
             return 0;
         }
     """, 2, 3, 1, 42, 42, 1, 42)
+    
+    @Test
+    fun externalMemoryPointerTest() = assertIntResults("""
+        fun main(): i64 {
+            var p: i64*;
+            p = (i64*) malloc(10 * 8);
+            var i: i64;
+            var currentElement: i64;
+            currentElement = 1;
+            for (i = 0;; i < 10; i = i + 1;) {
+                *(i64*)(p + 8 * i) = currentElement;
+                currentElement = currentElement * 2;
+            }
+            for (i = 1;; i < 10; i = i + 1;) {
+                *(i64*)(p + 8 * i) = *(i64*)(p + 8 * i) + *(i64*)(p + 8 * i - 8);
+            }
+            printInt(*(i64*)(p + 8 * 9));
+            return 0;
+        }
+    """, 1023)
 }

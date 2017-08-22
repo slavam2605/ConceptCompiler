@@ -1,0 +1,2 @@
+# Set up line endings -- important for shell scripts at least under windows' linux subsystem
+* text eol=lf

@@ -152,7 +152,7 @@ fun compileCall(builder: ASMBuilder,
     for (i in (0 until intArguments.size).reversed()) {
         val dest = IntArgumentsAssignment[i]
         if (dest is InStack) {
-            builder.appendLine("push", intArguments[i])
+            builder.appendLine("push", intArguments[i].value(localAssignment)!!)
             pushedSize += 8 // TODO always 8?
         }
     }
