@@ -23,9 +23,14 @@ sealed class CompileTimeValue {
 }
 
 /**
+ * Marker interface for constant values which are allowed to be propagated
+ */
+interface ConstValue
+
+/**
  * Variable in the IR (Concept-ASM)
  */
-data class Variable(val name: String, var version: Int = 0) : CompileTimeValue() {
+data class Variable(val name: String, var version: Int = 0) : CompileTimeValue(), ConstValue {
     override fun toString() = "$name${if (version > 0) ".$version" else ""}"
 }
 
@@ -63,8 +68,20 @@ data class InStack(val offset: Int) : StaticAssemblyValue() {
 /**
  * Static integer constant value
  */
-data class IntConst(val value: Int) : StaticAssemblyValue() {
+data class IntConst(val value: Long) : StaticAssemblyValue(), ConstValue {
     override fun toString(): String = "$value"
+}
+
+/**
+ * Stack address: [rbp - [offset]]
+ */
+data class StackAddrVariable(val offset: Int) : StaticAssemblyValue(), ConstValue {
+    override fun toString(): String = "[rbp ${sign(-offset)} ${Math.abs(offset)}]"
+
+    private fun sign(value: Int): Char = when {
+        value >= 0 -> '+'
+        else -> '-'
+    }
 }
 
 /**
@@ -94,14 +111,14 @@ data class X86AddrConst(val baseRegister: InRegister?,
 /**
  * Static float constant value
  */
-data class FloatConst(val value: Float) : StaticAssemblyValue() {
+data class FloatConst(val value: Float) : StaticAssemblyValue(), ConstValue {
     override fun toString(): String = "$value"
 }
 
 /**
  * Static double constant value
  */
-data class DoubleConst(val value: Double) : StaticAssemblyValue() {
+data class DoubleConst(val value: Double) : StaticAssemblyValue(), ConstValue {
     override fun toString(): String = "$value"
 }
 

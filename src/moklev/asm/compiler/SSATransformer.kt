@@ -15,8 +15,8 @@ import kotlin.collections.LinkedHashSet
  */
 object SSATransformer {
     class Block(val label: String, val instructions: ArrayDeque<Instruction>) {
-        val nextBlocks = mutableSetOf<Block>()
-        val prevBlocks = mutableSetOf<Block>()
+        val nextBlocks: MutableSet<Block> = mutableSetOf<Block>()
+        val prevBlocks: MutableSet<Block> = mutableSetOf<Block>()
         val usedVariables = HashSet<String>()
         val localVariables = HashSet<String>()
         val lastVariableVersions = HashMap<String, Int>()
@@ -27,7 +27,7 @@ object SSATransformer {
             initStackOffset = block.initStackOffset
             maxStackOffset = block.maxStackOffset
         }
-        
+
         fun addNextBlock(block: Block) {
             nextBlocks.add(block)
             block.prevBlocks.add(this)
@@ -50,6 +50,7 @@ object SSATransformer {
             val localLiveRange = liveRanges[label]!!
             builder.label(label)
             instructions.forEachIndexed { i, instruction ->
+                builder.newLineComment(instruction)
                 instruction.compile(builder, blocks, variableAssignment, label, localLiveRange, i)
             }
         }
@@ -108,9 +109,14 @@ object SSATransformer {
         val blocks = extractBlocks(instructions)
         val startBlock = Block(startBlockLabel, ArrayDeque())
         functionArguments.forEachIndexed { index, argument ->
+            val newVar = Variable("$argument#var")
+            startBlock.instructions.add(Assign(newVar, IntArgumentsAssignment[index])) // TODO index must be among int arguments, valid only for ints
+        }
+        functionArguments.forEachIndexed { index, argument ->
             val external = Variable(argument)
+            val argVar = Variable("$argument#var")
             startBlock.instructions.add(StackAlloc(external, 8)) // TODO size of type
-            startBlock.instructions.add(Store(external, IntArgumentsAssignment[index])) // TODO index must be among int arguments, valid only for ints
+            startBlock.instructions.add(Store(external, argVar)) // TODO index must be among int arguments, valid only for ints
         }
         startBlock.instructions.add(Jump(blocks[0].label))
         val endBlock = Block(endBlockLabel, ArrayDeque())
@@ -136,7 +142,7 @@ object SSATransformer {
                     currentStackOffset += instruction.size
                     newInstructions.add(Assign(
                             instruction.lhs,
-                            X86AddrConst(RBP, null, 0, -currentStackOffset)
+                            StackAddrVariable(currentStackOffset)
                     ))
                 } else if (instruction !is StackFree) {
                     newInstructions.add(instruction)
@@ -151,44 +157,13 @@ object SSATransformer {
 
         println(nonLocalVariables)
 
-        val lastVersionMap = HashMap<String, Int>()
-        for (block in blocks) {
-            for (variable in nonLocalVariables) {
-                val newVersion = lastVersionMap.compute(variable) { _, v -> 1 + (v ?: -1) }!!
-                block.instructions.addFirst(Assign(Variable(variable, newVersion), Undefined))
-            }
-            for (instruction in block.instructions) {
-                instruction.usedValues
-                        .asSequence()
-                        .filterIsInstance<Variable>()
-                        .forEach { it.version = lastVersionMap[it.name]!! }
-                if (instruction is AssignInstruction) {
-                    val variable = instruction.lhs
-                    val newVersion = lastVersionMap.compute(variable.name) { _, v -> 1 + (v ?: -1) }!!
-                    variable.version = newVersion
-                }
-            }
-            for (variable in nonLocalVariables) {
-                val version = lastVersionMap[variable] ?: error("Unknown non-local variable")
-                block.lastVariableVersions[variable] = version
-            }
-        }
+        // TODO KEKERIS
 
-        for (block in blocks) {
-            val list = mutableListOf<Instruction>()
-            for (instruction in block.instructions) {
-                if (instruction is Assign && instruction.rhs1 is Undefined) {
-                    val phiArgs = block.prevBlocks
-                            .map { it.label to Variable(instruction.lhs.name, it.lastVariableVersions[instruction.lhs.name]!!) }
-                    if (phiArgs.isNotEmpty()) {
-                        list.add(Phi(instruction.lhs, phiArgs))
-                    }
-                } else {
-                    list.add(instruction)
-                }
+        println("ANAL: ")
+        performPointerAnalysis(blocks).let {
+            it.pointsTo.forEach { node, set ->
+                println("$node -> $set")
             }
-            block.instructions.clear()
-            block.instructions.addAll(list)
         }
 
         return maxStackOffset to blocks
@@ -240,7 +215,7 @@ object SSATransformer {
                 is Label -> {
                     if (currentList.isNotEmpty()) {
                         val currentLast = currentList.last
-                        if (currentLast !is UnconditionalBranch) {
+                        if (currentLast !is UnconditionalBranchInstruction) {
                             currentList.add(Jump(instruction.name))
                         }
                         blocks.add(Block(lastLabel, currentList))
@@ -258,7 +233,7 @@ object SSATransformer {
                         val newLabel = ".TL$tempLabel"
                         tempLabel++
                         val currentLast = currentList.last
-                        if (currentLast !is UnconditionalBranch) {
+                        if (currentLast !is UnconditionalBranchInstruction) {
                             currentList.add(Jump(newLabel))
                         }
                         blocks.add(Block(lastLabel, currentList))
@@ -274,7 +249,7 @@ object SSATransformer {
         for (block in blocks) {
             val firstUnconditionalBranchIndex = block.instructions
                     .mapIndexed { index, instruction -> index to instruction }
-                    .first { (_, instruction) -> instruction is UnconditionalBranch }
+                    .first { (_, instruction) -> instruction is UnconditionalBranchInstruction }
                     .first
             val toDrop = block.instructions.size - firstUnconditionalBranchIndex - 1
             for (counter in 0..toDrop - 1) {
@@ -302,6 +277,7 @@ object SSATransformer {
         blocks
                 .flatMap { it.instructions }
                 .filterIsInstance<Assign>()
+                .filter { it.rhs1 is ConstValue }
                 .forEach { assignMap[it.lhs] = assignMap[it.rhs1] ?: it.rhs1 }
         val rightUsedVariables = HashSet<String>()
         blocks
@@ -420,10 +396,12 @@ object SSATransformer {
             }
 
             println("\n^^^^^^^^^ End of code ^^^^^^^^^\n")
-
-            var (changed, newBlocks) = SSATransformer.propagateConstants(blocks)
-            blocks = SSATransformer.simplifyInstructions(newBlocks)
-            blocks = SSATransformer.recalcBlockConnectivity(blocks, startBlockLabel)
+            
+            var (changed, newBlocks) = propagateConstants(blocks)
+            blocks = simplifyInstructions(newBlocks)
+            blocks = recalcBlockConnectivity(blocks, startBlockLabel)
+            blocks = eliminateStackVariables(blocks)
+            
             changed = changed || !compareInstructionSet(blocks, newBlocks)
             if (!changed) {
                 break
@@ -433,6 +411,118 @@ object SSATransformer {
         return blocks
     }
 
+    private fun eliminateStackVariables(blocks: List<Block>): List<Block> {
+        val used = hashSetOf<StackAddrVariable>()
+        val rawUsed = hashSetOf<StackAddrVariable>()
+
+        blocks.forEach { block ->
+            block.instructions.forEach { instruction ->
+                val allUsed = instruction.usedValues.filterIsInstance<StackAddrVariable>()
+                used.addAll(allUsed)
+                if (instruction is MemoryInstruction) {
+                    rawUsed.addAll(instruction.notMemoryUsed.filterIsInstance<StackAddrVariable>())
+                } else {
+                    rawUsed.addAll(allUsed)
+                }
+            }
+        }
+
+        used.removeAll(rawUsed)
+        if (used.isEmpty()) {
+            return blocks
+        }
+        
+        val tempVarRegex = "#st_var([0-9]+)".toRegex()
+        val maxUsedIndex = blocks
+                .asSequence()
+                .flatMap { it.instructions.asSequence() }
+                .flatMap { it.usedValues.asSequence() }
+                .filterIsInstance<Variable>()
+                .mapNotNull {
+                    tempVarRegex.find(it.name)
+                            ?.groupValues
+                            ?.get(1)
+                            ?.toInt()
+                }.max() ?: -1
+        val newName = used.mapIndexed { index, stackVar ->
+            stackVar to "#st_var${maxUsedIndex + index + 1}"
+        }.toMap()
+        val newBlocks = arrayListOf<Block>()
+        for (block in blocks) {
+            val newInstructions = ArrayDeque<Instruction>()
+            for (instruction in block.instructions) {
+                if (instruction is Store && instruction.lhsAddr is StackAddrVariable
+                        && instruction.lhsAddr in used) {
+                    newInstructions.add(Assign(Variable(newName[instruction.lhsAddr]!!), instruction.rhs))
+                } else if (instruction is Load && instruction.rhsAddr is StackAddrVariable
+                        && instruction.rhsAddr in used) {
+                    newInstructions.add(Assign(instruction.lhs, Variable(newName[instruction.rhsAddr]!!)))
+                } else {
+                    newInstructions.add(instruction)
+                }
+            }
+            newBlocks.add(Block(block, newInstructions))
+        }
+        return partlyTransformToSSA(newBlocks)
+    }
+
+    private fun partlyTransformToSSA(blocks: List<Block>): List<Block> {
+        val countMap = hashMapOf<String, Int>()
+        blocks.forEach { block ->
+            block.instructions.forEach { instruction ->
+                if (instruction is AssignInstruction) {
+                    countMap.compute(instruction.lhs.toString()) { _, old -> (old ?: 0) + 1 }
+                }
+            }
+        }
+        val toTransform = countMap.filter { it.value > 1 }.keys
+        // TODO save information about prev/next blocks
+        return transformToSSA(toTransform, recalcBlockConnectivity(blocks, startBlockLabel))
+    }
+    
+    private fun transformToSSA(transformVariables: Collection<String>, blocks: List<Block>): List<Block> {
+        val lastVersionMap = HashMap<String, Int>()
+        for (block in blocks) {
+            for (variable in transformVariables) {
+                val newVersion = lastVersionMap.compute(variable) { _, v -> 1 + (v ?: -1) }!!
+                block.instructions.addFirst(Assign(Variable(variable, newVersion), Undefined))
+            }
+            for (instruction in block.instructions) {
+                instruction.usedValues
+                        .asSequence()
+                        .filterIsInstance<Variable>()
+                        .forEach { it.version = lastVersionMap[it.name]!! }
+                if (instruction is AssignInstruction) {
+                    val variable = instruction.lhs
+                    val newVersion = lastVersionMap.compute(variable.name) { _, v -> 1 + (v ?: -1) }!!
+                    variable.version = newVersion
+                }
+            }
+            for (variable in transformVariables) {
+                val version = lastVersionMap[variable] ?: error("Unknown transform variable")
+                block.lastVariableVersions[variable] = version
+            }
+        }
+
+        for (block in blocks) {
+            val list = mutableListOf<Instruction>()
+            for (instruction in block.instructions) {
+                if (instruction is Assign && instruction.rhs1 is Undefined) {
+                    val phiArgs = block.prevBlocks
+                            .map { it.label to Variable(instruction.lhs.name, it.lastVariableVersions[instruction.lhs.name]!!) }
+                    if (phiArgs.isNotEmpty()) {
+                        list.add(Phi(instruction.lhs, phiArgs))
+                    }
+                } else {
+                    list.add(instruction)
+                }
+            }
+            block.instructions.clear()
+            block.instructions.addAll(list)
+        }
+        return blocks
+    }
+    
     private fun compareInstructionSet(blocks: List<SSATransformer.Block>, newBlocks: List<SSATransformer.Block>): Boolean {
         val list1 = blocks.flatMap { it.instructions }
         val list2 = newBlocks.flatMap { it.instructions }

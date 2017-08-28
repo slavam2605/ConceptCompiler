@@ -2,14 +2,14 @@ package moklev.asm.instructions
 
 import moklev.asm.interfaces.BranchInstruction
 import moklev.asm.interfaces.Instruction
-import moklev.asm.interfaces.UnconditionalBranch
+import moklev.asm.interfaces.UnconditionalBranchInstruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
 
 /**
  * @author Vyacheslav Moklev
  */
-class Jump(label: String) : BranchInstruction(label), UnconditionalBranch {
+class Jump(label: String) : BranchInstruction(label), UnconditionalBranchInstruction {
     override fun toString() = "goto $label"
     override val usedValues = emptyList<CompileTimeValue>()
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this

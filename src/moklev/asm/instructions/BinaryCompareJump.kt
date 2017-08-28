@@ -19,7 +19,7 @@ class BinaryCompareJump(val op: String, val rhs1: CompileTimeValue, val rhs2: Co
                 "<=" to "jle"
         )
 
-        val intComparator = hashMapOf<String, (Int, Int) -> Boolean>(
+        val intComparator = hashMapOf<String, (Long, Long) -> Boolean>(
                 "==" to { a, b -> a == b },
                 "!=" to { a, b -> a != b },
                 ">" to { a, b -> a > b },

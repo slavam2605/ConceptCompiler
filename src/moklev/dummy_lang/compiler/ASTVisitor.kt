@@ -123,7 +123,7 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
     }
 
     override fun visitIntConst(ctx: DummyLangParser.IntConstContext): IntConst {
-        return IntConst(ctx, ctx.INT_LITERAL().text.toInt())
+        return IntConst(ctx, ctx.INT_LITERAL().text.toLong())
     }
 
     override fun visitVariable(ctx: DummyLangParser.VariableContext): Variable {

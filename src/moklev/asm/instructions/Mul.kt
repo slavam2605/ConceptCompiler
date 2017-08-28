@@ -16,16 +16,16 @@ class Mul(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
     }
 
     override fun simplify(): List<Instruction> {
-        if (rhs1 is IntConst && rhs1.value == 1) {
+        if (rhs1 is IntConst && rhs1.value == 1L) {
             return listOf(Assign(lhs, rhs2))
         }
-        if (rhs2 is IntConst && rhs2.value == 1) {
+        if (rhs2 is IntConst && rhs2.value == 1L) {
             return listOf(Assign(lhs, rhs1))
         }
-        if (rhs1 is IntConst && rhs1.value == 0) {
+        if (rhs1 is IntConst && rhs1.value == 0L) {
             return listOf(Assign(lhs, IntConst(0)))
         }
-        if (rhs2 is IntConst && rhs2.value == 0) {
+        if (rhs2 is IntConst && rhs2.value == 0L) {
             return listOf(Assign(lhs, IntConst(0)))
         }
         // TODO implement more (like lea and x * 2 = x + x)

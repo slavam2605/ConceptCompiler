@@ -15,7 +15,7 @@ import java.util.*
 // TODO support global variables
 // TODO appropriate spill decisions (loop depth + precolored variables should be able to be spilled), set spill cost
 // TODO eliminate blocks with optimized out instructions
-// TODO support register avoiding (example: avoid using RAX and RDX with `div`)
+// TODO detect if execution path exists such that reaches no return statement 
 
 const val startBlockLabel = ".func_start" 
 const val endBlockLabel = ".func_end"

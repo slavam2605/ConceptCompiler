@@ -180,4 +180,14 @@ class RawTextInstruction(val name: String) : Instruction() {
 /**
  * Marker interface for unconditional branch instructions
  */
-interface UnconditionalBranch
+interface UnconditionalBranchInstruction
+
+/**
+ * Instruction which works with memory (like store/load operations)
+ */
+interface MemoryInstruction {
+    /**
+     * Values that used not for memory operations
+     */
+    val notMemoryUsed: List<CompileTimeValue>
+}

@@ -15,7 +15,7 @@ import org.antlr.v4.runtime.ParserRuleContext
 /**
  * @author Vyacheslav Moklev
  */
-class IntConst(ctx: ParserRuleContext, val value: Int) : Expression(ctx) {
+class IntConst(ctx: ParserRuleContext, val value: Long) : Expression(ctx) {
     override fun getType(state: CompilationState, scope: Scope): Type = INT_64
 
     override fun compileResult(builder: FunctionBuilder, state: CompilationState, scope: Scope): String {

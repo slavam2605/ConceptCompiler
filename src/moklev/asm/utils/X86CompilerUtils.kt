@@ -2,7 +2,6 @@ package moklev.asm.utils
 
 import moklev.asm.compiler.IntArgumentsAssignment
 import moklev.asm.compiler.LiveRange
-import moklev.asm.compiler.SSATransformer
 import moklev.utils.ASMBuilder
 import java.util.*
 
@@ -19,7 +18,7 @@ fun compileAssign(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAsse
                 builder.appendLine("mov", tempRegister, "$rhs")
                 builder.appendLine("mov", "$lhs", tempRegister)
             }
-            lhs is InStack && rhs is X86AddrConst -> {
+            lhs is InStack && rhs is StackAddrVariable -> {
                 // TODO get temp register
                 val tempRegister = R15
                 builder.appendLine("lea", tempRegister, "$rhs")
@@ -32,7 +31,7 @@ fun compileAssign(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAsse
             lhs is InRegister && (rhs is InStack || rhs is InRegister || rhs is IntConst) -> {
                 builder.appendLine("mov", lhs, rhs)
             }
-            lhs is InRegister && rhs is X86AddrConst -> {
+            lhs is InRegister && rhs is StackAddrVariable -> {
                 builder.appendLine("lea", lhs, rhs)
             }
             else -> error("Not supported: assign(${lhs.javaClass}, ${rhs.javaClass})")
@@ -131,7 +130,7 @@ fun compileCall(builder: ASMBuilder,
             .filterIsInstance<InRegister>()
             .filter { it in callerToSave }
             .toList()
-    
+
     for (register in registersToSave) {
         compilePush(builder, register)
     }
@@ -156,11 +155,11 @@ fun compileCall(builder: ASMBuilder,
             pushedSize += 8 // TODO always 8?
         }
     }
-    
+
     compileReassignment(builder, reassignmentList)
 
     builder.appendLine("call", funcName)
-    if (pushedSize > 0) 
+    if (pushedSize > 0)
         builder.appendLine("add", RSP, pushedSize)
     if (result != null)
         compileAssign(builder, result, RAX)
@@ -170,20 +169,32 @@ fun compileCall(builder: ASMBuilder,
     }
 }
 
-fun compileBinaryOperation(
-        builder: ASMBuilder,
-        operation: String,
-        lhs: StaticAssemblyValue,
-        rhs1: StaticAssemblyValue,
-        rhs2: StaticAssemblyValue,
-        symmetric: Boolean = false) {
-    if (symmetric) {
-        if (lhs == rhs2 && lhs != rhs1 
+fun compileBinaryOperation(builder: ASMBuilder,
+                           operation: String,
+                           lhs: StaticAssemblyValue,
+                           rhs1: StaticAssemblyValue,
+                           rhs2: StaticAssemblyValue,
+                           symmetric: Boolean = false,
+                           imm32Only: Boolean = true,
+                           swapped: Boolean = false) {
+    if (imm32Only && rhs2 is IntConst && rhs2.value.toInt().toLong() != rhs2.value) {
+        val tempRegister = if (lhs == rhs1) R15 else lhs
+        compileAssign(builder, tempRegister, rhs2)
+        if (symmetric)
+            builder.appendLine(operation, tempRegister, rhs1)
+        else
+            error("Operation is not supported: $operation, $lhs, $rhs1, $rhs2")
+        compileAssign(builder, lhs, tempRegister)
+        return
+    }
+
+    if (symmetric && !swapped) {
+        if (lhs == rhs2 && lhs != rhs1
                 || rhs1 is InStack && rhs2 is InRegister
                 || rhs1 is IntConst && rhs2 !is IntConst)
-            return compileBinaryOperation(builder, operation, lhs, rhs2, rhs1)
+            return compileBinaryOperation(builder, operation, lhs, rhs2, rhs1, symmetric, imm32Only, swapped = true)
     }
-    
+
     if (lhs != rhs1 && lhs == rhs2 || lhs is InStack) {
         // TODO proper temp register
         val tempRegister = R15
@@ -192,8 +203,8 @@ fun compileBinaryOperation(
         compileAssign(builder, lhs, tempRegister)
         return
     }
-    
-    if (lhs != rhs1) 
+
+    if (lhs != rhs1)
         compileAssign(builder, lhs, rhs1)
     builder.appendLine(operation, lhs, rhs2)
 }
@@ -206,7 +217,7 @@ fun compileCompare(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAss
         builder.appendLine("cmp", tempRegister, rhs)
         return
     }
-    
+
     builder.appendLine("cmp", lhs, rhs)
 }
 
@@ -229,7 +240,7 @@ fun compileDiv(
             .filterIsInstance<InRegister>()
             .any { it == RDX }
 
-    val raxUsed = liveRange
+    val raxUsed = rhs2 == RAX || liveRange
             .asSequence()
             .filter { it.key != definingVariable }
             .filter { indexInBlock >= it.value.firstIndex && indexInBlock < it.value.lastIndex }
@@ -240,7 +251,7 @@ fun compileDiv(
     val tempRegister = R15 // TODO normal temp register
     val tempRegister2 = R14
     val tempRegister3 = R13
-    
+
     if (raxUsed)
         compileAssign(builder, tempRegister2, RAX)
     if (rdxUsed)
@@ -249,6 +260,8 @@ fun compileDiv(
 
     val actualRhs2 = if (rhs2 == RDX)
         tempRegister
+    else if (rhs2 == RAX)
+        tempRegister2
     else if (rhs2 is IntConst) {
         compileAssign(builder, tempRegister3, rhs2)
         tempRegister3
@@ -262,21 +275,21 @@ fun compileDiv(
         compileAssign(builder, lhs1, RAX)
     if (lhs2 != null)
         compileAssign(builder, lhs2, RDX)
-    
-    if (raxUsed)
+
+    if (raxUsed && lhs1 != RAX && lhs2 != RAX)
         compileAssign(builder, RAX, tempRegister2)
-    if (rdxUsed)
+    if (rdxUsed && lhs1 != RAX && lhs2 != RAX)
         compileAssign(builder, RDX, tempRegister)
 }
 
 fun compileStore(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAssemblyValue) {
     val tempRegister = R15
-    val actualRhs = if (rhs is InStack || rhs is X86AddrConst) {
+    val actualRhs = if (rhs is InStack || rhs is StackAddrVariable) {
         compileAssign(builder, tempRegister, rhs)
         tempRegister
     } else rhs
-    
-    if (lhs is X86AddrConst) {
+
+    if (lhs is StackAddrVariable) {
         builder.appendLine("mov", "qword $lhs", actualRhs)
     } else {
         builder.appendLine("mov", "qword [$lhs]", actualRhs)

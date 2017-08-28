@@ -103,12 +103,11 @@ fun detectLiveRange(blocks: List<Block>): List<Pair<Block, Map<String, LiveRange
 
     val definedVariables = HashMap<String, MutableSet<String>>()
     for (block in blocks) {
-        val vars = HashSet<String>()
-        block.instructions
+        definedVariables[block.label] = block.instructions
                 .filterIsInstance<AssignInstruction>()
-                .mapTo(vars) { "${it.lhs}" }
-        definedVariables[block.label] = vars
+                .mapTo(HashSet()) { "${it.lhs}" }
     }
+    
     while (true) {
         var changed = false
         for (j in 0..blocks.size - 1) {
@@ -120,9 +119,14 @@ fun detectLiveRange(blocks: List<Block>): List<Pair<Block, Map<String, LiveRange
             }
             if (allDefinedVariables.isEmpty())
                 continue
-            val intersection = allDefinedVariables.reduce { a, b -> a intersect b }
-            val addResult = definedVariables[blocks[j].label]!!.addAll(intersection)
-            changed = changed || addResult
+            // TODO maybe it is not correct -- check
+//            val intersection = allDefinedVariables.reduce { a, b -> a intersect b }
+//            val addResult = definedVariables[blocks[j].label]!!.addAll(intersection)
+//            changed = changed || addResult
+            allDefinedVariables.forEach { defined ->
+                val addResult = definedVariables[blocks[j].label]!!.addAll(defined)
+                changed = changed || addResult
+            }
         }
         if (!changed)
             break
@@ -139,10 +143,8 @@ fun detectLiveRange(blocks: List<Block>): List<Pair<Block, Map<String, LiveRange
     println("definedVariables = $definedVariables")
     println("liveVariables = $liveVariables")
 
-    return blocks.map {
-        val block = it
-        block to liveVariables[it.label]!!.map {
-            val variable = it
+    return blocks.map { block ->
+        block to liveVariables[block.label]!!.map { variable ->
             val isDeadInBlock = block.nextBlocks.all { variable !in liveVariables[it.label]!! }
             variable to LiveRange(
                     run {
@@ -198,7 +200,6 @@ fun buildConflictGraph(liveRanges: List<Pair<Block, Map<String, LiveRange>>>): G
     }
 
     liveRanges.forEach { (_, map) ->
-        Unit
         for (u in nodes) {
             for (v in nodes) {
                 if (u == v)
@@ -435,13 +436,19 @@ private fun colorBlocks(
                 .filterIsInstance<Avoid>()
                 .mapTo(penalty) { it.register }
     }
+    val predefined = ArrayList<Pair<String, InRegister>>()
+    coloringPreferences.forEach {
+        it.value
+                .filterIsInstance<Predefined>()
+                .mapTo(predefined) { it.node to it.register }
+    }
 
     println("[colorBlocks]: coalescingEdges = $coloringPreferences")
     println("[colorBlocks]: coalesce = $coalesce")
     println("[colorBlocks]: targeting = $targeting")
 
     var currentGraph = conflictGraph
-    var bestColoring = colorBlocks(colors, currentColoring, usedStackOffset, targeting, penalty, conflictGraph, blocks, coloredBlocks, failOnStack)
+    var bestColoring = colorBlocks(colors, currentColoring, usedStackOffset, predefined, targeting, penalty, conflictGraph, blocks, coloredBlocks, failOnStack)
             .map({
                 return Either.Left(Unit)
             }) { it }.right()
@@ -475,11 +482,28 @@ private fun colorBlocks(
                             .flatMap { it.asSequence() }
                             .map { (_, place) -> newVar to place }
             )
+
+            val lVarPredef = HashSet<Pair<String, InRegister>>()
+            val rVarPredef = HashSet<Pair<String, InRegister>>()
+            predefined.filterTo(lVarPredef) { (varName, _) ->
+                varName == lVar
+            }
+            predefined.filterTo(rVarPredef) { (varName, _) ->
+                varName == rVar
+            }
+            predefined.removeAll(lVarPredef)
+            predefined.removeAll(rVarPredef)
+            predefined.addAll(
+                    sequenceOf(lVarPredef, rVarPredef)
+                            .flatMap { it.asSequence() }
+                            .map { (_, place) -> newVar to place }
+            )
             println("CUR_COL: $currentColoring")
             val coloring = colorBlocks(
                     colors,
                     currentColoring,
                     usedStackOffset,
+                    predefined,
                     targeting,
                     penalty,
                     newGraph,
@@ -491,6 +515,11 @@ private fun colorBlocks(
                 targeting.removeIf { (varName, _) -> varName == newVar }
                 targeting.addAll(lVarTarget)
                 targeting.addAll(rVarTarget)
+                
+                predefined.removeIf { (varName, _) -> varName == newVar }
+                predefined.addAll(lVarPredef)
+                predefined.addAll(rVarPredef)
+                
                 for (blockColoring in currentColoring.values) {
                     blockColoring.remove(newVar)
                 }
@@ -550,6 +579,7 @@ private fun colorBlocks(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
         usedStackOffset: Int,
+        predefined: List<Pair<String, InRegister>>,
         targeting: List<Pair<String, InRegister>>,
         penalty: List<InRegister>,
         conflictGraph: Graph,
@@ -562,6 +592,20 @@ private fun colorBlocks(
     println("conflictGraph = $conflictGraph")
     println("/*************** [colorBlocks::end] ****************/")
     println()
+    
+    // TODO predefine color not for all blocks -- only for block where Assign(a := register) was
+    val predefinedColoring = initialColoring
+            .asSequence()
+            .map { it.key to it.value.toMutableMap()  }
+            .toMap()
+    predefined.forEach { (node, color) ->
+        predefinedColoring.forEach { (_, coloring) -> 
+            coloring[node] = color
+        }
+    }
+
+    println("PREDEF: $predefined")
+    
     val nbColors = colors.size
     val nodes = conflictGraph.nodes
 
@@ -597,16 +641,16 @@ private fun colorBlocks(
     }
 
     val spillCost = IntArray(nbNodes)
-    for ((_, coloring) in initialColoring) {
+    for ((_, coloring) in predefinedColoring) {
         for ((variable, _) in coloring) {
             val index = nodeToIndex[variable] ?: continue
             spillCost[index] = Int.MAX_VALUE // TODO only first 6 arguments must not be spilled
         }
     }
 
-    for ((_, coloring1) in initialColoring) {
+    for ((_, coloring1) in predefinedColoring) {
         for ((variable1, color1) in coloring1) {
-            for ((_, coloring2) in initialColoring) {
+            for ((_, coloring2) in predefinedColoring) {
                 for ((variable2, color2) in coloring2) {
                     if (color1 != color2) {
                         val index1 = nodeToIndex[variable1] ?: continue
@@ -624,7 +668,7 @@ private fun colorBlocks(
 
     val indexToColor = HashMap<Int, StaticAssemblyValue>()
     val remainingColors = LinkedHashSet(colors)
-    for ((_, coloring) in initialColoring) {
+    for ((_, coloring) in predefinedColoring) {
         for ((variable, color) in coloring) {
             val nodeIndex = nodeToIndex[variable] ?: continue
             if (indexToColor[result[nodeIndex]] == color)
@@ -704,7 +748,7 @@ private fun colorBlocks(
         val colorIndex = result[index]
         if (colorIndex < 0) {
             if (resultColoring[node] == null) {
-                val offset = (1..nodes.size)
+                val offset = (1..Int.MAX_VALUE)
                         .asSequence()
                         .map { it * 8 }
                         .filter { it !in reservedOffsets }

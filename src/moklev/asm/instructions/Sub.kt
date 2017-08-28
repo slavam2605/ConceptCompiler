@@ -19,7 +19,7 @@ class Sub(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
         if (rhs1 is IntConst && rhs2 is IntConst) {
             return listOf(Assign(lhs, IntConst(rhs1.value - rhs2.value)))
         }
-        if (rhs2 is IntConst && rhs2.value == 0) {
+        if (rhs2 is IntConst && rhs2.value == 0L) {
             return listOf(Assign(lhs, rhs1))
         }
         return listOf(this)

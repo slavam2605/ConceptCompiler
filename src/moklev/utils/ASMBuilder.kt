@@ -3,7 +3,7 @@ package moklev.utils
 /**
  * @author Moklev Vyacheslav
  */
-class ASMBuilder {
+class ASMBuilder(val isDebug: Boolean = false) {
     val builder = StringBuilder()
     
     fun label(label: String) {
@@ -16,7 +16,12 @@ class ASMBuilder {
                 .append(instruction)
         if (operands.isNotEmpty()) 
             builder.append(" ")
-        operands.joinTo(builder).append("\n")
+        operands.joinTo(builder).append('\n')
+    }
+    
+    fun newLineComment(comment: Any) {
+        if (isDebug)
+            builder.append("\n    ; ").append(comment).append('\n')
     }
     
     fun build(): String = builder.toString()

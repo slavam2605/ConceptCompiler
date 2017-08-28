@@ -3,7 +3,6 @@ package moklev.asm.instructions
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
-import moklev.utils.Either
 
 /**
  * @author Vyacheslav Moklev
@@ -18,9 +17,9 @@ class Assign(lhs: Variable, rhs1: CompileTimeValue) : UnaryInstruction(lhs, rhs1
     override fun simplify() = listOf(this)
 
     override fun coloringPreferences(): List<ColoringPreference> {
-        return listOf(
-                Coalesce("$lhs", "$rhs1")
-        )
+        if (rhs1 is InRegister) 
+            return listOf(Predefined("$lhs", rhs1))
+        return listOf(Coalesce("$lhs", "$rhs1"))
     }
 
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {
