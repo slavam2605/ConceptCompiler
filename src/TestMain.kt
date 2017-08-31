@@ -12,19 +12,28 @@ import java.io.PrintWriter
  * @author Moklev Vyacheslav
  */
 fun main(args: Array<String>) {
-    val stream = CharStreams.fromFileName("test_sources/pointer_test.cp")
+    val stream = CharStreams.fromFileName("test_sources/type_definition_test.cp")
     val parser = DummyLangParser(
             CommonTokenStream(
                     DummyLangLexer(stream)
             )
     )
-
-    val functions = parser.file().function()
+    
+    val file = parser.file()
+    val typeDefinitions = file.typeDefinition()
+    val functions = file.function()
     val fileBuilder = StringBuilder()
     val state = CompilationState()
     val scope = Scope()
+    val visitor = ASTVisitor(state, scope)
+    
+    typeDefinitions.forEach { typeDefinitionContext ->
+        val (name, type) = visitor.visitTypeDefinition(typeDefinitionContext)
+        scope.declareType(name, type)
+    }
+    
     val asmFunctions = functions.map { parseFunction ->
-        val function = ASTVisitor.visitFunction(parseFunction)
+        val function = visitor.visitFunction(parseFunction)
         function.compile(state, scope)
     }
     state.errorList.forEach {

@@ -16,6 +16,7 @@ class Scope {
     private val variableScope = ArrayList<MutableMap<String, Type>>()
     private val allocatedSize = ArrayList<Int>()
     private val functionSignatures = HashMap<String, FunctionSignature>()
+    private val definedTypes = HashMap<String, Type>()
 
     init {
         variableScope.add(hashMapOf())
@@ -88,6 +89,14 @@ class Scope {
         val result = variableScope.last().put(name, type) != null
         allocatedSize[allocatedSize.lastIndex] = allocatedSize.last() + type.sizeOf
         return result
+    }
+ 
+    fun declareType(name: String, type: Type) {
+        definedTypes[name] = type
+    }
+ 
+    fun getDeclaredType(name: String): Type? {
+        return definedTypes[name]
     }
     
     private fun <T> MutableList<T>.removeLast() {

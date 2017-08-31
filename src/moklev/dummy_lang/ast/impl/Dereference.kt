@@ -13,20 +13,13 @@ import org.antlr.v4.runtime.ParserRuleContext
 /**
  * @author Moklev Vyacheslav
  */
-class Dereference(ctx: ParserRuleContext, val addr: Expression) : Expression(ctx), LValue {
-    override fun compileResult(builder: FunctionBuilder, state: CompilationState, scope: Scope): String {
-        val result = builder.tempVar
-        val address = addr.compileResult(builder, state, scope)
-        builder.add(Load(Variable(result), Variable(address)))
-        return result
-    }
-
+class Dereference(ctx: ParserRuleContext, val addr: Expression) : LValue(ctx) {
     override fun getType(state: CompilationState, scope: Scope): Type? {
         val addrType = addr.getType(state, scope)
         if (addrType is Type.PointerType) {
             return addrType.sourceType
         }
-        state.addError(ctx, "Dereferencing of a not-pointer type $addrType")
+        state.addError(ctx, "Dereferencing of a non-pointer type $addrType")
         return null
     }
 

@@ -18,7 +18,6 @@ class VarDef(ctx: ParserRuleContext, val name: String, val type: Type) : Stateme
         if (defined) {
             state.addWarning(ctx, "Shadowing: variable $name was already defined")
         }
-        // TODO type.sizeOf()
-        builder.add(StackAlloc(Variable(name), 8))
+        builder.add(StackAlloc(Variable(name), type.sizeOf))
     }
 }

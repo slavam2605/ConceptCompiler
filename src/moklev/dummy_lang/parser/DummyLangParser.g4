@@ -5,7 +5,7 @@ options {
 }
 
 file
-    :   function*
+    :   (function | typeDefinition)* EOF
     ;
 
 function
@@ -44,6 +44,7 @@ expression
 //    |   '-' expression
 //    |   '!' expression
 //    |   '*' expression
+    |   left=expression '.' right=IDENT                                         #structField
     |   left=expression op=('*'|'/'|'%') right=expression                       #timesDiv
     |   left=expression op=('+'|'-') right=expression                           #plusMinus
     |   left=expression op=('<'|'>'|'=='|'!='|'>='|'<=') right=expression       #compareOp
@@ -56,7 +57,13 @@ exprList
     ;
 
 type
-    :   type '*'
-    |   'i64'
-    |   'bool'
+    :   type '*'                #pointerType
+    |   ('i64' | 'bool')        #primitiveType
+    |   IDENT                   #definedType
+    ;
+    
+typeDefinition
+    :   'struct' name=IDENT '{'
+            (fieldNames+=IDENT ':' fieldTypes+=type ';')*
+        '}'                         #structDefinition
     ;

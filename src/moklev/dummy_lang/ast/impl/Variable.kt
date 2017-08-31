@@ -13,7 +13,7 @@ import org.antlr.v4.runtime.ParserRuleContext
 /**
  * @author Vyacheslav Moklev
  */
-class Variable(ctx: ParserRuleContext, val name: String) : Expression(ctx), LValue {
+class Variable(ctx: ParserRuleContext, val name: String) : LValue(ctx) {
     override fun getType(state: CompilationState, scope: Scope): Type? {
         val varType = scope.getType(name)
         if (varType != null)

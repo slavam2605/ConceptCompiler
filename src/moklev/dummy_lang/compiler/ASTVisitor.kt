@@ -6,12 +6,13 @@ import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.ast.interfaces.Statement
 import moklev.dummy_lang.parser.DummyLangParser
 import moklev.dummy_lang.parser.DummyLangParserBaseVisitor
+import moklev.dummy_lang.utils.INT_64
 import moklev.dummy_lang.utils.Type
 
 /**
  * @author Vyacheslav Moklev
  */
-object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
+class ASTVisitor(val state: CompilationState, val scope: Scope) : DummyLangParserBaseVisitor<Any>() {
     override fun visitFunction(ctx: DummyLangParser.FunctionContext): Function {
         return Function(
                 ctx,
@@ -86,8 +87,13 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
             is DummyLangParser.DereferenceContext-> visitDereference(ctx)
             is DummyLangParser.TypeCastContext -> visitTypeCast(ctx)
             is DummyLangParser.AddressOfContext -> visitAddressOf(ctx)
+            is DummyLangParser.StructFieldContext -> visitStructField(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitStructField(ctx: DummyLangParser.StructFieldContext): StructField {
+        return StructField(ctx, visitExpression(ctx.left), ctx.right.text)
     }
 
     override fun visitTypeCast(ctx: DummyLangParser.TypeCastContext): TypeCast {
@@ -141,11 +147,43 @@ object ASTVisitor : DummyLangParserBaseVisitor<Any>() {
     override fun visitExprList(ctx: DummyLangParser.ExprListContext): List<Expression> {
         return ctx.exprs.map { visitExpression(it) }
     }
-
-    override fun visitType(ctx: DummyLangParser.TypeContext): Type {
-        if (ctx.type() != null) {
-            return Type.PointerType(visitType(ctx.type()))
+    
+    fun visitType(ctx: DummyLangParser.TypeContext): Type {
+        return when (ctx) {
+            is DummyLangParser.PointerTypeContext -> visitPointerType(ctx)
+            is DummyLangParser.PrimitiveTypeContext -> visitPrimitiveType(ctx)
+            is DummyLangParser.DefinedTypeContext -> visitDefinedType(ctx)
+            else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitPointerType(ctx: DummyLangParser.PointerTypeContext): Type.PointerType {
+        return Type.PointerType(visitType(ctx.type()))
+    }
+
+    override fun visitPrimitiveType(ctx: DummyLangParser.PrimitiveTypeContext): Type.PrimitiveType {
         return Type.PrimitiveType(ctx.text, 8) // TODO not 8
+    }
+
+    override fun visitDefinedType(ctx: DummyLangParser.DefinedTypeContext): Type {
+        return scope.getDeclaredType(ctx.IDENT().text) ?: run {
+            state.addError(ctx, "Undefined type: ${ctx.IDENT().text}")
+            INT_64 // TODO some more reasonable default type
+        } 
+    }
+
+    fun visitTypeDefinition(ctx: DummyLangParser.TypeDefinitionContext): Pair<String, Type> {
+        return when (ctx) {
+            is DummyLangParser.StructDefinitionContext -> visitStructDefinition(ctx)
+            else -> error("Branch is not supported")
+        }
+    }
+
+    override fun visitStructDefinition(ctx: DummyLangParser.StructDefinitionContext): Pair<String, Type.StructType> {
+        val fields = arrayListOf<Pair<String, Type>>()
+        for (index in 0 until ctx.fieldNames.size) {
+            fields.add(ctx.fieldNames[index].text to visitType(ctx.fieldTypes[index]))
+        }
+        return ctx.name.text to Type.StructType(ctx.name.text, fields)
     }
 }

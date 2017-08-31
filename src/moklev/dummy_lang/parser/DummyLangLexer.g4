@@ -26,6 +26,7 @@ LESS_EQ:    '<=';
 
 ASSIGN:     '=';
 
+DOT:        '.';
 COMMA:      ',';
 SEMICOLON:  ';';
 COLON:      ':';
@@ -42,6 +43,7 @@ RETURN_KW:      'return';
 IF_KW:          'if';
 ELSE_KW:        'else';
 FOR_KW:         'for';
+STRUCT_KW:      'struct';
 
 IDENT:          [a-zA-Z_][a-zA-Z_0-9]*;
 

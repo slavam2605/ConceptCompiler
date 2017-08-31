@@ -3,6 +3,7 @@ package moklev.asm.utils
 /**
  * @author Moklev Vyacheslav
  */
-enum class Type {
-    INT, FLOAT
+sealed class Type {
+    object INT : Type()
+    data class RAW(val size: Int) : Type()
 }

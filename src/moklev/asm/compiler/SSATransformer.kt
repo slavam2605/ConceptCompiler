@@ -157,8 +157,6 @@ object SSATransformer {
 
         println(nonLocalVariables)
 
-        // TODO KEKERIS
-
         println("ANAL: ")
         performPointerAnalysis(blocks).let {
             it.pointsTo.forEach { node, set ->
