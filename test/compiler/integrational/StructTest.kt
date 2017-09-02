@@ -68,4 +68,44 @@ internal class StructTest : RunnerTestBase() {
             return 0;
         }
     """, 37)
+    
+    @Test
+    fun escapedStructPointerTest() = assertIntResults("""
+        struct Pair {
+            a: i64;
+            b: i64;
+        }
+
+        fun modifyStruct(pointer: Pair*): i64 {
+            (*pointer).a = 10;
+            return 0;
+        }
+
+        fun main(): i64 {
+            var st: Pair;
+            st.a = 1;
+            st.b = 2;
+            modifyStruct(&st);
+            printInt(st.a + st.b);
+            return 0;
+        }
+    """, 12)
+    
+    @Test
+    fun notEscapedStructPointerTest() = assertIntResults("""
+        struct Pair {
+            a: i64;
+            b: i64;
+        }
+
+        fun main(): i64 {
+            var pair: Pair;
+            var pairPointer: Pair*;
+            pairPointer = &pair;
+            (*pairPointer).a = 10;
+            (*pairPointer).b = 20;
+            printInt(pair.a + pair.b);
+            return 0;
+        }
+    """, 30)
 }
