@@ -3,7 +3,6 @@ package moklev.asm.instructions
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
 import moklev.utils.ASMBuilder
-import moklev.utils.Either
 
 /**
  * @author Moklev Vyacheslav
@@ -16,13 +15,13 @@ class Add(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
     }
 
     override fun simplify(): List<Instruction> {
-        if (rhs1 is IntConst && rhs2 is IntConst) {
-            return listOf(Assign(lhs, IntConst(rhs1.value + rhs2.value)))
+        if (rhs1 is Int64Const && rhs2 is Int64Const) {
+            return listOf(Assign(lhs, Int64Const(rhs1.value + rhs2.value)))
         }
-        if (rhs1 is IntConst && rhs1.value == 0L) {
+        if (rhs1 is Int64Const && rhs1.value == 0L) {
             return listOf(Assign(lhs, rhs2))
         }
-        if (rhs2 is IntConst && rhs2.value == 0L) {
+        if (rhs2 is Int64Const && rhs2.value == 0L) {
             return listOf(Assign(lhs, rhs1))
         }
         return listOf(this)

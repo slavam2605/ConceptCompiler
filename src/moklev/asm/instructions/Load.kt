@@ -24,11 +24,20 @@ class Load(lhs: Variable, val rhsAddr: CompileTimeValue) : AssignInstruction(lhs
 
     override fun simplify(): List<Instruction> = listOf(this)
 
-    override fun coloringPreferences(): List<ColoringPreference> = emptyList()
+    override fun coloringPreferences(): List<ColoringPreference> {
+        if (rhsAddr is StackAddrVariable) {
+            return listOf(Predefined("$lhs", InStack(rhsAddr.offset, rhsAddr.size)))
+        }
+        return emptyList()
+    }
 
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {
         val lhs = lhs.value(variableAssignment)!!
         val rhsAddr = rhsAddr.value(variableAssignment)!!
+ 
+        // TODO I think it is correct due to predefined coloring
+        if (rhsAddr is StackAddrVariable)
+            return
         
         // TODO sizeof here
         

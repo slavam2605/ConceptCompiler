@@ -17,8 +17,8 @@ class Mod(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
     }
 
     override fun simplify(): List<Instruction> {
-        if (rhs2 is IntConst && rhs2.value == 1L) {
-            return listOf(Assign(lhs, IntConst(0)))
+        if (rhs2 is Int64Const && rhs2.value == 1L) {
+            return listOf(Assign(lhs, Int64Const(0)))
         }
         return listOf(this)
     }

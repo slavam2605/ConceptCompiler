@@ -18,7 +18,7 @@ class Div(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
     }
 
     override fun simplify(): List<Instruction> {
-        if (rhs2 is IntConst && rhs2.value == 1L) {
+        if (rhs2 is Int64Const && rhs2.value == 1L) {
             return listOf(Assign(lhs, rhs1))
         }
         return listOf(this)

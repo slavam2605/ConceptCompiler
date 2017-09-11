@@ -3,7 +3,7 @@ package moklev.dummy_lang.ast.interfaces
 import moklev.asm.instructions.Assign
 import moklev.asm.instructions.Jump
 import moklev.asm.interfaces.Label
-import moklev.asm.utils.IntConst
+import moklev.asm.utils.Int64Const
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.compiler.Scope
@@ -27,10 +27,10 @@ abstract class BooleanExpression(ctx: ParserRuleContext) : Expression(ctx) {
         compileBranch(builder, state, scope, setOne, setZero)
         builder
                 .add(Label(setOne))
-                .add(Assign(Variable(result), IntConst(1)))
+                .add(Assign(Variable(result), Int64Const(1)))
                 .add(Jump(afterSetZero))
                 .add(Label(setZero))
-                .add(Assign(Variable(result), IntConst(0)))
+                .add(Assign(Variable(result), Int64Const(0)))
                 .add(Label(afterSetZero))
         return result
     }

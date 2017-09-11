@@ -1,7 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
 import moklev.asm.instructions.Assign
-import moklev.asm.utils.IntConst
+import moklev.asm.utils.Int64Const
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState
@@ -20,7 +20,7 @@ class IntConst(ctx: ParserRuleContext, val value: Long) : Expression(ctx) {
 
     override fun compileResult(builder: FunctionBuilder, state: CompilationState, scope: Scope): String {
         val result = builder.tempVar
-        builder.add(Assign(Variable(result), IntConst(value)))
+        builder.add(Assign(Variable(result), Int64Const(value)))
         return result
     }
 }

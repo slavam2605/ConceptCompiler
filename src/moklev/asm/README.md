@@ -80,6 +80,35 @@ preceded with other instructions (basic block must have an optional prefix of
 
 In this part of text you can ask -- "is it your own attempt to implement LLVM"? Yes, it is.
 
+Calling convention
+------------------
+Concept-ASM functions follow System V calling convention for primitive arguments of size 8:
+integers are passed in registers RDI, RSI, RDX, RCX, R8, R9, the rest are passed in stack,
+doubles are passed in registers XMM[0-7]. Any integer of size less than 8 is passed in 
+the entire register, so 6 parameters of 1-byte integer type will be passed in the lower 
+byte of RDI, RSI, RDX, RCX, R8, R9. The same is for floating numbers of size less than 8.
+
+Complex values like structures and big values are passed recursively: they are treated as
+'unwrapped' values (struct(int64, int32) will be treated as two arguments of type int64
+and int32 respectively). Big values (bigger than 8 bytes) are cut in pieces of 8 bytes
+and passed like integers. The example:
+```
+struct A {
+    x: i64;
+    y: double;
+    z: i32;
+}
+
+fun foo(arg1: i64, arg2: A, arg3: double, arg4: i128, arg5: i256) 
+```
+For this function `arg1` will be passed in RDI, `arg2.x` in RSI, `arg2.y` in XMM0, 
+`arg2.z` in EDX (the higher part of RDX will remain not initialized), `arg3` in XMM1,
+`arg4` in RCX and R8, `arg5` in R9 and rest 24 bytes of `arg5` will be passed in stack.
+
+The return value is passed in RAX, RDX, RDI, RSI, RCX, R8, R9, R10, R11 and the rest 
+on stack. Floating parts of the return value are passed in XMM[0-7] and the rest
+on stack.
+
 Instructions
 ------------
 

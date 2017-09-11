@@ -107,7 +107,7 @@ fun detectLiveRange(blocks: List<Block>): List<Pair<Block, Map<String, LiveRange
                 .filterIsInstance<AssignInstruction>()
                 .mapTo(HashSet()) { "${it.lhs}" }
     }
-    
+
     while (true) {
         var changed = false
         for (j in 0..blocks.size - 1) {
@@ -292,6 +292,56 @@ private fun detectLoops(blocks: List<Block>): List<LoopSet> {
     return result
 }
 
+fun dummyColorGraph(
+        colors: List<InRegister>,
+        initialColoring: Map<String, Coloring>,
+        usedStackOffset: Int,
+        conflictGraph: Graph,
+        coloringPreferences: Map<String, Set<ColoringPreference>>,
+        blocks: List<Block>
+): VariableAssignment {
+    val coloring = hashMapOf<String, StaticAssemblyValue>()
+    var maxStackOffset = usedStackOffset
+    val remainColors = colors.toHashSet()
+
+    for ((_, blockColoring) in initialColoring) {
+        for ((node, color) in blockColoring) {
+            coloring[node] = color
+            remainColors.remove(color)
+            if (color is InStack)
+                maxStackOffset = maxOf(maxStackOffset, color.offset)
+        }
+    }
+    for ((_, preferences) in coloringPreferences) {
+        for (preference in preferences) {
+            if (preference is Predefined) {
+                coloring[preference.node] = preference.color
+                remainColors.remove(preference.color)
+                if (preference.color is InStack)
+                    maxStackOffset = maxOf(maxStackOffset, preference.color.offset)
+            }   
+        }
+    }
+
+    for (node in conflictGraph.nodes) {
+        if (node !in coloring) {
+            if (remainColors.isNotEmpty()) {
+                val color = remainColors.first()
+                coloring[node] = color
+                remainColors.remove(color)
+            } else {
+                maxStackOffset += 8 // TODO node.size
+                coloring[node] = InStack(maxStackOffset)
+            }
+        }
+    }
+
+    println("RAPKA_COLORING: $coloring")
+    return blocks.asSequence()
+            .map { it.label to coloring }
+            .toMap()
+}
+
 /**
  * Assign a memory location for every variable from
  * a collection of blocks
@@ -309,6 +359,15 @@ fun advancedColorGraph(
         coloringPreferences: Map<String, Set<ColoringPreference>>,
         blocks: List<Block>
 ): VariableAssignment {
+    for ((_, preferences) in coloringPreferences) {
+        val predef = preferences.firstOrNull { it is Predefined } as? Predefined ?: continue
+        for (otherNode in conflictGraph.nodes) {
+            if (otherNode == predef.node)
+                continue
+            (conflictGraph.edges[predef.node] as MutableSet<String>).add(otherNode)
+            (conflictGraph.edges[otherNode] as MutableSet<String>).add(predef.node)
+        }
+    }
     val result = HashMap<String, Coloring>()
     val loopSets = detectLoops(blocks)
     val globalLoopSet = LoopSet.Loop(loopSets)
@@ -436,11 +495,11 @@ private fun colorBlocks(
                 .filterIsInstance<Avoid>()
                 .mapTo(penalty) { it.register }
     }
-    val predefined = ArrayList<Pair<String, InRegister>>()
+    val predefined = ArrayList<Pair<String, StaticAssemblyValue>>()
     coloringPreferences.forEach {
         it.value
                 .filterIsInstance<Predefined>()
-                .mapTo(predefined) { it.node to it.register }
+                .mapTo(predefined) { it.node to it.color }
     }
 
     println("[colorBlocks]: coalescingEdges = $coloringPreferences")
@@ -483,8 +542,8 @@ private fun colorBlocks(
                             .map { (_, place) -> newVar to place }
             )
 
-            val lVarPredef = HashSet<Pair<String, InRegister>>()
-            val rVarPredef = HashSet<Pair<String, InRegister>>()
+            val lVarPredef = HashSet<Pair<String, StaticAssemblyValue>>()
+            val rVarPredef = HashSet<Pair<String, StaticAssemblyValue>>()
             predefined.filterTo(lVarPredef) { (varName, _) ->
                 varName == lVar
             }
@@ -515,11 +574,11 @@ private fun colorBlocks(
                 targeting.removeIf { (varName, _) -> varName == newVar }
                 targeting.addAll(lVarTarget)
                 targeting.addAll(rVarTarget)
-                
+
                 predefined.removeIf { (varName, _) -> varName == newVar }
                 predefined.addAll(lVarPredef)
                 predefined.addAll(rVarPredef)
-                
+
                 for (blockColoring in currentColoring.values) {
                     blockColoring.remove(newVar)
                 }
@@ -579,7 +638,7 @@ private fun colorBlocks(
         colors: List<InRegister>,
         initialColoring: Map<String, Coloring>,
         usedStackOffset: Int,
-        predefined: List<Pair<String, InRegister>>,
+        predefined: List<Pair<String, StaticAssemblyValue>>,
         targeting: List<Pair<String, InRegister>>,
         penalty: List<InRegister>,
         conflictGraph: Graph,
@@ -592,20 +651,20 @@ private fun colorBlocks(
     println("conflictGraph = $conflictGraph")
     println("/*************** [colorBlocks::end] ****************/")
     println()
-    
+
     // TODO predefine color not for all blocks -- only for block where Assign(a := register) was
     val predefinedColoring = initialColoring
             .asSequence()
-            .map { it.key to it.value.toMutableMap()  }
+            .map { it.key to it.value.toMutableMap() }
             .toMap()
     predefined.forEach { (node, color) ->
-        predefinedColoring.forEach { (_, coloring) -> 
+        predefinedColoring.forEach { (_, coloring) ->
             coloring[node] = color
         }
     }
 
     println("PREDEF: $predefined")
-    
+
     val nbColors = colors.size
     val nodes = conflictGraph.nodes
 
@@ -666,14 +725,18 @@ private fun colorBlocks(
     println("Coloring: ${(0..nbNodes - 1).map { indexToNode[it] }}")
     val result = colorGraph(nbColors, nbNodes, matrix, spillCost)
 
+    var maxPredefinedStackOffset = 0
     val indexToColor = HashMap<Int, StaticAssemblyValue>()
     val remainingColors = LinkedHashSet(colors)
     for ((_, coloring) in predefinedColoring) {
         for ((variable, color) in coloring) {
             val nodeIndex = nodeToIndex[variable] ?: continue
-            if (indexToColor[result[nodeIndex]] == color)
-                throw IllegalArgumentException("Conflicting initial coloring")
+            if (indexToColor[result[nodeIndex]] != null && indexToColor[result[nodeIndex]] != color)
+                throw IllegalArgumentException("Conflicting initial coloring: $color != ${indexToColor[result[nodeIndex]]}")
             indexToColor[result[nodeIndex]] = color
+            if (color is InStack) {
+                maxPredefinedStackOffset = maxOf(maxPredefinedStackOffset, color.offset + color.size)
+            }
             remainingColors.remove(color)
             println("${result[nodeIndex]} <= $color // $variable")
             println("remain: $remainingColors")
@@ -683,10 +746,10 @@ private fun colorBlocks(
     val reservedOffsets = HashSet<Int>()
     val resultColoring = HashMap<String, StaticAssemblyValue>()
 
-    for (i in 1..usedStackOffset) {
+    for (i in 1..maxOf(maxPredefinedStackOffset, usedStackOffset)) {
         reservedOffsets.add(i)
     }
-    
+
     nodes.forEachIndexed { index, node ->
         // TODO separate function for stack coloring
         fun preferredColor(): StaticAssemblyValue? {

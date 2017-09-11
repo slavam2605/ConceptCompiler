@@ -42,7 +42,7 @@ class BinaryCompareJump(val op: String, val rhs1: CompileTimeValue, val rhs2: Co
     }
 
     override fun simplify(): List<Instruction> {
-        if (rhs1 is IntConst && rhs2 is IntConst) {
+        if (rhs1 is Int64Const && rhs2 is Int64Const) {
             val comparator = intComparator[op]!!
             if (comparator.invoke(rhs1.value, rhs2.value))
                 return listOf(Jump(label))

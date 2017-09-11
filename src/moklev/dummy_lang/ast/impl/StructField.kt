@@ -1,7 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
 import moklev.asm.instructions.Add
-import moklev.asm.utils.IntConst
+import moklev.asm.utils.Int64Const
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.ast.interfaces.LValue
@@ -38,7 +38,7 @@ class StructField(ctx: ParserRuleContext, val expression: Expression, val fieldN
         val structAddress = expression.compileReference(builder, state, scope)
         // TODO introduce get_element_ptr
         val fieldAddress = builder.tempVar
-        builder.add(Add(Variable(fieldAddress), Variable(structAddress), IntConst(field.offset.toLong())))
+        builder.add(Add(Variable(fieldAddress), Variable(structAddress), Int64Const(field.offset.toLong())))
         return fieldAddress
     }
 }

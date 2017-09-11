@@ -105,19 +105,26 @@ object SSATransformer {
         }
     }
 
-    fun transform(instructions: List<Instruction>, functionArguments: List<String>): Pair<Int, List<Block>> {
+    fun transform(instructions: List<Instruction>, functionArguments: List<Pair<Type, String>>): Pair<Int, List<Block>> {
         val blocks = extractBlocks(instructions)
         val startBlock = Block(startBlockLabel, ArrayDeque())
-        functionArguments.forEachIndexed { index, argument ->
-            val newVar = Variable("$argument#var")
-            startBlock.instructions.add(Assign(newVar, IntArgumentsAssignment[index])) // TODO index must be among int arguments, valid only for ints
+        // all registers are reserved to prevent invalid coloring with usage of raw registers
+        for (argumentRegister in SystemVFunctionArgumentsLoader.integerAssignment) {
+            val newVar = Variable("#${argumentRegister.toString().toLowerCase()}")
+            startBlock.instructions.add(Assign(newVar, argumentRegister))
         }
-        functionArguments.forEachIndexed { index, argument ->
-            val external = Variable(argument)
-            val argVar = Variable("$argument#var")
-            startBlock.instructions.add(StackAlloc(external, 8)) // TODO size of type
-            startBlock.instructions.add(Store(external, argVar)) // TODO index must be among int arguments, valid only for ints
-        }
+ 
+        startBlock.instructions.addAll(
+                SystemVFunctionArgumentsLoader.pullArguments(functionArguments)
+        )
+        
+//        functionArguments.forEachIndexed { index, argument ->
+//            val external = Variable(argument)
+//            val argVar = Variable("$argument#var")
+//            startBlock.instructions.add(StackAlloc(external, 8)) // TODO size of type
+//            startBlock.instructions.add(Store(external, argVar)) // TODO index must be among int arguments, valid only for ints
+//        }
+        
         startBlock.instructions.add(Jump(blocks[0].label))
         val endBlock = Block(endBlockLabel, ArrayDeque())
         endBlock.instructions.add(RawTextInstruction("ret"))
@@ -142,7 +149,7 @@ object SSATransformer {
                     currentStackOffset += instruction.size
                     newInstructions.add(Assign(
                             instruction.lhs,
-                            StackAddrVariable(currentStackOffset)
+                            StackAddrVariable(currentStackOffset, instruction.size)
                     ))
                 } else if (instruction !is StackFree) {
                     newInstructions.add(instruction)
@@ -434,8 +441,7 @@ object SSATransformer {
         val maxUsedIndex = blocks
                 .asSequence()
                 .flatMap { it.instructions.asSequence() }
-                .flatMap { it.usedValues.asSequence() }
-                .filterIsInstance<Variable>()
+                .flatMap { (it as? AssignInstruction)?.lhs?.let { sequenceOf(it) } ?: emptySequence<Variable>() }
                 .mapNotNull {
                     tempVarRegex.find(it.name)
                             ?.groupValues

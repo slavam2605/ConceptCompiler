@@ -25,6 +25,6 @@ class Target(val node: String, val register: InRegister) : ColoringPreference()
 class Avoid(val register: InRegister) : ColoringPreference()
 
 /**
- * Must color [node] to the color [register] (precolored node)
+ * Must color [node] to the [color] (precolored node)
  */
-class Predefined(val node: String, val register: InRegister) : ColoringPreference()
+class Predefined(val node: String, val color: StaticAssemblyValue) : ColoringPreference()

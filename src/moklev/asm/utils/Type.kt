@@ -4,6 +4,13 @@ package moklev.asm.utils
  * @author Moklev Vyacheslav
  */
 sealed class Type {
-    object INT : Type()
-    data class RAW(val size: Int) : Type()
+    abstract val size: Int
+
+    object INT : Type() {
+        override fun toString(): String = "INT"
+
+        override val size: Int = 8
+    }
+
+    data class RAW(override val size: Int) : Type()
 }

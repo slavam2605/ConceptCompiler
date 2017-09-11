@@ -49,33 +49,43 @@ object Undefined : CompileTimeValue() {
 /**
  * Representation of static value in assembly
  */
-sealed class StaticAssemblyValue : CompileTimeValue()
+sealed class StaticAssemblyValue : CompileTimeValue() {
+    abstract val size: Int;
+}
 
 /**
  * Location of variable in integer register with name [register]
  */
-data class InRegister(val register: String) : StaticAssemblyValue() {
+// TODO magic constant 8
+data class InRegister(val register: String, override val size: Int = 8) : StaticAssemblyValue() {
     override fun toString(): String = register
 }
 
 /**
  * Location of variable on stack in [rbp - [offset]]
  */
-data class InStack(val offset: Int) : StaticAssemblyValue() {
-    override fun toString(): String = "qword [rbp ${if (offset < 0) "+" else "-"} ${Math.abs(offset)}]"
+// TODO eliminate default size
+// TODO assign this with regard to size (qword -> ...)
+// TODO toString() must not affect compilation
+data class InStack(val offset: Int, override val size: Int = 8, val fromRsp: Boolean = false) : StaticAssemblyValue() {
+    override fun toString(): String = "qword [${
+        if (fromRsp) "rsp" else "rbp"
+    } ${if (offset < 0) "+" else "-"} ${Math.abs(offset)}]"
 }
 
 /**
  * Static integer constant value
  */
-data class IntConst(val value: Long) : StaticAssemblyValue(), ConstValue {
+data class Int64Const(val value: Long) : StaticAssemblyValue(), ConstValue {
     override fun toString(): String = "$value"
+
+    override val size: Int = 8
 }
 
 /**
  * Stack address: [rbp - [offset]]
  */
-data class StackAddrVariable(val offset: Int) : StaticAssemblyValue(), ConstValue {
+data class StackAddrVariable(val offset: Int, override val size: Int) : StaticAssemblyValue(), ConstValue {
     override fun toString(): String = "[rbp ${sign(-offset)} ${Math.abs(offset)}]"
 
     private fun sign(value: Int): Char = when {
@@ -84,42 +94,9 @@ data class StackAddrVariable(val offset: Int) : StaticAssemblyValue(), ConstValu
     }
 }
 
-/**
- * x86 address representation: [[baseRegister] + [offsetRegister] * [offsetFactor] + [offset]]
- */
-data class X86AddrConst(val baseRegister: InRegister?,
-                   val offsetRegister: InRegister?,
-                   val offsetFactor: Int,
-                   val offset: Int) : StaticAssemblyValue() {
-    override fun toString(): String = when {
-        baseRegister != null && offsetRegister != null ->
-            "[$baseRegister ${sign(offsetFactor)} $offsetRegister * ${Math.abs(offsetFactor)} ${sign(offset)} ${Math.abs(offset)}]"
-        baseRegister != null ->
-            "[$baseRegister ${sign(offset)} ${Math.abs(offset)}]"
-        offsetRegister != null ->
-            "[$offsetFactor * $offsetRegister ${sign(offset)} ${Math.abs(offset)}]"
-        else ->
-            "[$offset]"
-    }
-
-    private fun sign(value: Int): Char = when {
-        value >= 0 -> '+'
-        else -> '-'
-    }
-}
-
-/**
- * Static float constant value
- */
-data class FloatConst(val value: Float) : StaticAssemblyValue(), ConstValue {
-    override fun toString(): String = "$value"
-}
-
-/**
- * Static double constant value
- */
-data class DoubleConst(val value: Double) : StaticAssemblyValue(), ConstValue {
-    override fun toString(): String = "$value"
+data class ComplexValue(val list: List<StaticAssemblyValue>) : StaticAssemblyValue() {
+    override val size: Int
+        get() = list.sumBy { it.size }
 }
 
 // Useful constants
