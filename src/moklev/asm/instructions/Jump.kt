@@ -12,6 +12,7 @@ import moklev.utils.ASMBuilder
 class Jump(label: String) : BranchInstruction(label), UnconditionalBranchInstruction {
     override fun toString() = "goto $label"
     override val usedValues = emptyList<CompileTimeValue>()
+    override val allValues = emptyList<CompileTimeValue>()
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
     override fun simplify() = listOf(this)
     override fun coloringPreferences(): List<ColoringPreference> = emptyList()

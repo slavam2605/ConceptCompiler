@@ -14,6 +14,8 @@ class Load(lhs: Variable, val rhsAddr: CompileTimeValue) : AssignInstruction(lhs
     
     override val usedValues: List<CompileTimeValue> = listOf(rhsAddr)
 
+    override val allValues: List<CompileTimeValue> = listOf(lhs, rhsAddr)
+
     override val notMemoryUsed: List<CompileTimeValue> = listOf()
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {

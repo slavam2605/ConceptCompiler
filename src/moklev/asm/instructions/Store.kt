@@ -16,6 +16,8 @@ class Store(val lhsAddr: CompileTimeValue, val rhs: CompileTimeValue) : Readonly
     
     override val usedValues: List<CompileTimeValue> = listOf(lhsAddr, rhs)
 
+    override val allValues: List<CompileTimeValue> = listOf(lhsAddr, rhs)
+
     override val notMemoryUsed: List<CompileTimeValue> = listOf(rhs)
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {

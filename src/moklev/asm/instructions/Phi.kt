@@ -17,14 +17,11 @@ class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : Assi
         return "$lhs = phi ${pairs.joinToString { "[${it.first}, ${it.second}]" }}"
     }
 
-    override val usedValues: List<CompileTimeValue>
-        get() {
-            val list = mutableListOf<CompileTimeValue>()
-            for ((_, rhs) in pairs) {
-                list.add(rhs)
-            }
-            return list
-        }
+    override val usedValues: List<CompileTimeValue> = pairs.map { it.second }
+
+    override val allValues: List<CompileTimeValue> = mutableListOf<CompileTimeValue>(lhs).apply { 
+        pairs.mapTo(this) { it.second }
+    }
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
         return Phi(lhs, pairs.map {

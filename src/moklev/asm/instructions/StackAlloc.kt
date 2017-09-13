@@ -13,6 +13,8 @@ class StackAlloc(lhs: Variable, val size: Int) : AssignInstruction(lhs) {
     
     override val usedValues: List<CompileTimeValue> = emptyList()
 
+    override val allValues: List<CompileTimeValue> = emptyList()
+    
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
 
     override fun simplify(): List<Instruction> = listOf(this)

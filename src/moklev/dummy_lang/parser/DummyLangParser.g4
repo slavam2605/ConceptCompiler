@@ -18,7 +18,7 @@ typedIdentList
     ;
 
 statement
-    :   'var' IDENT ':' type ';'                        #varDef
+    :   'var' IDENT ':' type ('=' expression)? ';'      #varDef
     |   expression '=' expression ';'                   #assign
     |   'return' expression ';'                         #return
     |   'if' expression '{'                
@@ -48,8 +48,8 @@ expression
     |   left=expression op=('*'|'/'|'%') right=expression                       #timesDiv
     |   left=expression op=('+'|'-') right=expression                           #plusMinus
     |   left=expression op=('<'|'>'|'=='|'!='|'>='|'<=') right=expression       #compareOp
-//    |   left=expression '&&' left=expression
-//    |   right=expression '||' right=expression
+    |   left=expression '&&' right=expression                                    #logicalAnd
+//    |   left=expression '||' right=expression
     ;
 
 exprList

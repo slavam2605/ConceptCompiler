@@ -11,8 +11,10 @@ import moklev.utils.ASMBuilder
  * @author Moklev Vyacheslav
  */
 class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endBlockLabel), UnconditionalBranchInstruction {
-    override val usedValues: List<CompileTimeValue> = listOf(rhs) 
+    override val usedValues: List<CompileTimeValue> = listOf(rhs)
 
+    override val allValues: List<CompileTimeValue> = listOf(rhs)
+    
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
         if (rhs == variable)
             return Return(type, value)

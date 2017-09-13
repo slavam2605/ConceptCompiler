@@ -64,7 +64,7 @@ class ASTVisitor(val state: CompilationState, val scope: Scope) : DummyLangParse
     }
 
     override fun visitVarDef(ctx: DummyLangParser.VarDefContext): VarDef {
-        return VarDef(ctx, ctx.IDENT().text, visitType(ctx.type()))
+        return VarDef(ctx, ctx.IDENT().text, visitType(ctx.type()), ctx.expression()?.let { visitExpression(it) })
     }
 
     override fun visitAssign(ctx: DummyLangParser.AssignContext): Assign {
@@ -88,8 +88,13 @@ class ASTVisitor(val state: CompilationState, val scope: Scope) : DummyLangParse
             is DummyLangParser.TypeCastContext -> visitTypeCast(ctx)
             is DummyLangParser.AddressOfContext -> visitAddressOf(ctx)
             is DummyLangParser.StructFieldContext -> visitStructField(ctx)
+            is DummyLangParser.LogicalAndContext -> visitLogicalAnd(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitLogicalAnd(ctx: DummyLangParser.LogicalAndContext): LogicalAnd {
+        return LogicalAnd(ctx, visitExpression(ctx.left), visitExpression(ctx.right))
     }
 
     override fun visitStructField(ctx: DummyLangParser.StructFieldContext): StructField {

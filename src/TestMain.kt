@@ -12,7 +12,7 @@ import java.io.PrintWriter
  * @author Moklev Vyacheslav
  */
 fun main(args: Array<String>) {
-    val stream = CharStreams.fromFileName("test_sources/struct_argument_test.cp")
+    val stream = CharStreams.fromFileName("test_sources/merge_sort_test.cp")
     val parser = DummyLangParser(
             CommonTokenStream(
                     DummyLangLexer(stream)
@@ -52,6 +52,7 @@ fun main(args: Array<String>) {
     with(PrintWriter("compiled\\file.asm")) {
         print("BITS 64\n")
         print("extern printInt\n")
+        print("extern printPair\n")
         print("extern malloc\n")
         print("extern free\n")
         print("\n")

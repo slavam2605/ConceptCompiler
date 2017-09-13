@@ -13,6 +13,8 @@ import moklev.utils.ASMBuilder
 class ExternalAssign(lhs: Variable) : AssignInstruction(lhs) {
     override val usedValues: List<CompileTimeValue> = emptyList()
 
+    override val allValues = listOf(lhs)
+
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
 
     override fun simplify(): List<Instruction> = listOf(this)

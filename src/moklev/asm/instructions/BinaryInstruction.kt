@@ -11,4 +11,6 @@ import moklev.asm.utils.Variable
  */
 abstract class BinaryInstruction(lhs: Variable, val rhs1: CompileTimeValue, val rhs2: CompileTimeValue) : AssignInstruction(lhs) {
     override val usedValues = listOf(rhs1, rhs2)
+
+    override val allValues = listOf(lhs, rhs1, rhs2)
 }
