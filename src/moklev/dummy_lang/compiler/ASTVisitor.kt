@@ -89,8 +89,13 @@ class ASTVisitor(val state: CompilationState, val scope: Scope) : DummyLangParse
             is DummyLangParser.AddressOfContext -> visitAddressOf(ctx)
             is DummyLangParser.StructFieldContext -> visitStructField(ctx)
             is DummyLangParser.LogicalAndContext -> visitLogicalAnd(ctx)
+            is DummyLangParser.LogicalOrContext -> visitLogicalOr(ctx)
             else -> error("Branch is not supported")
         }
+    }
+
+    override fun visitLogicalOr(ctx: DummyLangParser.LogicalOrContext): LogicalOr {
+        return LogicalOr(ctx, visitExpression(ctx.left), visitExpression(ctx.right))
     }
 
     override fun visitLogicalAnd(ctx: DummyLangParser.LogicalAndContext): LogicalAnd {

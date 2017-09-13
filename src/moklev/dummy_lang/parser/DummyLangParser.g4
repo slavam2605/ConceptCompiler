@@ -48,8 +48,8 @@ expression
     |   left=expression op=('*'|'/'|'%') right=expression                       #timesDiv
     |   left=expression op=('+'|'-') right=expression                           #plusMinus
     |   left=expression op=('<'|'>'|'=='|'!='|'>='|'<=') right=expression       #compareOp
-    |   left=expression '&&' right=expression                                    #logicalAnd
-//    |   left=expression '||' right=expression
+    |   left=expression '&&' right=expression                                   #logicalAnd
+    |   left=expression '||' right=expression                                   #logicalOr
     ;
 
 exprList
