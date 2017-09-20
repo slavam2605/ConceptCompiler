@@ -9,7 +9,7 @@ import moklev.utils.Either
 /**
  * Phi node of SSA graph. Controls rules of merging variable value from
  * multiple incoming blocks
- * 
+ *
  * @author Moklev Vyacheslav
  */
 class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : AssignInstruction(lhs) {
@@ -19,9 +19,13 @@ class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : Assi
 
     override val usedValues: List<CompileTimeValue> = pairs.map { it.second }
 
-    override val allValues: List<CompileTimeValue> = mutableListOf<CompileTimeValue>(lhs).apply { 
-        pairs.mapTo(this) { it.second }
-    }
+    override val allValues: List<String>
+        get() = mutableListOf(lhs.toString()).apply {
+            pairs.forEach {
+                this.add(it.first)
+                this.add(it.second.toString())
+            }
+        }
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
         return Phi(lhs, pairs.map {

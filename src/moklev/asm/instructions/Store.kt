@@ -13,10 +13,11 @@ import moklev.utils.ASMBuilder
  */
 class Store(val lhsAddr: CompileTimeValue, val rhs: CompileTimeValue) : ReadonlyInstruction(), MemoryInstruction {
     override fun toString(): String = "store $lhsAddr, $rhs"
-    
+
     override val usedValues: List<CompileTimeValue> = listOf(lhsAddr, rhs)
 
-    override val allValues: List<CompileTimeValue> = listOf(lhsAddr, rhs)
+    override val allValues: List<String>
+        get() = listOf(lhsAddr.toString(), rhs.toString())
 
     override val notMemoryUsed: List<CompileTimeValue> = listOf(rhs)
 
@@ -38,7 +39,7 @@ class Store(val lhsAddr: CompileTimeValue, val rhs: CompileTimeValue) : Readonly
         val localAssignment = variableAssignment[currentBlockLabel]!!
         val lhsAddr = lhsAddr.value(localAssignment)!!
         val rhs = rhs.value(localAssignment)!!
-        
+
         compileStore(builder, lhsAddr, rhs)
     }
 }

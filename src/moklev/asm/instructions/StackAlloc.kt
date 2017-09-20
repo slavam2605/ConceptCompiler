@@ -10,11 +10,12 @@ import moklev.utils.ASMBuilder
  */
 class StackAlloc(lhs: Variable, val size: Int) : AssignInstruction(lhs) {
     override fun toString(): String = "$lhs = stack_alloc($size)"
-    
+
     override val usedValues: List<CompileTimeValue> = emptyList()
 
-    override val allValues: List<CompileTimeValue> = emptyList()
-    
+    override val allValues: List<String>
+        get() = listOf(lhs.toString(), size.toString())
+
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
 
     override fun simplify(): List<Instruction> = listOf(this)
@@ -22,5 +23,5 @@ class StackAlloc(lhs: Variable, val size: Int) : AssignInstruction(lhs) {
     override fun coloringPreferences(): List<ColoringPreference> = emptyList()
 
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>)
-        = error("Must be statically allocated")
+            = error("Must be statically allocated")
 }

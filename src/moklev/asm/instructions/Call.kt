@@ -11,7 +11,7 @@ import moklev.utils.Either
 
 /**
  * Call of function (subroutine)
- * 
+ *
  * @author Moklev Vyacheslav
  */
 class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : ReadonlyInstruction() {
@@ -19,8 +19,11 @@ class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) :
 
     override val usedValues = args.map { it.second }
 
-    override val allValues = args.map { it.second }
-    
+    override val allValues
+        get() = mutableListOf(funcName).apply {
+            args.forEach { this.add(it.second.toString()) }
+        }
+
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
         val newArgs = args.map { it.first to if (it.second == variable) value else it.second }
         return Call(funcName, newArgs)

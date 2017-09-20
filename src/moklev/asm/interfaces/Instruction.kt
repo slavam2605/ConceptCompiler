@@ -20,10 +20,10 @@ sealed class Instruction {
     abstract val usedValues: List<CompileTimeValue>
 
     /**
-     * All values used in the instruction (in fixed order)
+     * String representation of all values used in the instruction (in fixed order)
      */
-    abstract val allValues: List<CompileTimeValue>
-    
+    abstract val allValues: List<String>
+
     /**
      * Substitute {variable := value} in the right (read-only) part of instruction
      *
@@ -144,7 +144,9 @@ abstract class ReadonlyInstruction : Instruction()
 class Label(val name: String) : Instruction() {
     override fun toString() = "$name:"
     override val usedValues = emptyList<CompileTimeValue>()
-    override val allValues = emptyList<CompileTimeValue>()
+    override val allValues
+        get() = listOf(name)
+
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
     override fun simplify() = listOf(this)
     override fun coloringPreferences(): List<ColoringPreference> = emptyList()
@@ -163,8 +165,9 @@ class Label(val name: String) : Instruction() {
 class RawTextInstruction(val name: String) : Instruction() {
     override val usedValues: List<CompileTimeValue> = emptyList()
 
-    override val allValues: List<CompileTimeValue> = emptyList()
-    
+    override val allValues: List<String>
+        get() = listOf(name)
+
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
 
     override fun simplify(): List<Instruction> = listOf(this)

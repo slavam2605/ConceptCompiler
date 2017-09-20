@@ -36,7 +36,8 @@ class BinaryCompareJump(val op: String, val rhs1: CompileTimeValue, val rhs2: Co
 
     override fun toString() = "if ($rhs1 $op $rhs2) goto $label"
     override val usedValues = listOf(rhs1, rhs2)
-    override val allValues = listOf(rhs1, rhs2)
+    override val allValues
+        get() = listOf(op, rhs1.toString(), rhs2.toString(), label)
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
         return BinaryCompareJump(op, if (rhs1 == variable) value else rhs1, if (rhs2 == variable) value else rhs2, label)

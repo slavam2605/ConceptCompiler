@@ -11,10 +11,11 @@ import moklev.utils.ASMBuilder
  */
 class Load(lhs: Variable, val rhsAddr: CompileTimeValue) : AssignInstruction(lhs), MemoryInstruction {
     override fun toString(): String = "$lhs = load $rhsAddr"
-    
+
     override val usedValues: List<CompileTimeValue> = listOf(rhsAddr)
 
-    override val allValues: List<CompileTimeValue> = listOf(lhs, rhsAddr)
+    override val allValues: List<String>
+        get() = listOf(lhs.toString(), rhsAddr.toString())
 
     override val notMemoryUsed: List<CompileTimeValue> = listOf()
 
@@ -36,26 +37,26 @@ class Load(lhs: Variable, val rhsAddr: CompileTimeValue) : AssignInstruction(lhs
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {
         val lhs = lhs.value(variableAssignment)!!
         val rhsAddr = rhsAddr.value(variableAssignment)!!
- 
+
         // TODO I think it is correct due to predefined coloring
         if (rhsAddr is StackAddrVariable)
             return
-        
+
         // TODO sizeof here
-        
+
         val tempRegister1 = R15
         val tempRegister2 = R14
         val actualLhs = if (lhs is InStack) tempRegister1 else lhs
         val actualRhsAddr = if (rhsAddr is InStack) tempRegister2 else rhsAddr
-        
+
         compileAssign(builder, actualRhsAddr, rhsAddr)
-        
+
         if (actualRhsAddr is StackAddrVariable) {
             builder.appendLine("mov", actualLhs, "qword $actualRhsAddr")
         } else {
-            builder.appendLine("mov", actualLhs, "qword [$actualRhsAddr]")   
+            builder.appendLine("mov", actualLhs, "qword [$actualRhsAddr]")
         }
-        
+
         compileAssign(builder, lhs, actualLhs)
     }
 }

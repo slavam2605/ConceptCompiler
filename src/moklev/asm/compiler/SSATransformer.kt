@@ -209,11 +209,17 @@ object SSATransformer {
         return variables - localVariables
     }
 
-    private fun extractBlocks(instructions: List<Instruction>): MutableList<Block> {
+    /**
+     * Split list of instructions into list of basic blocks. For each basic block
+     * removes all instructions after first unconditional branch instruction
+     * @return List of blocks in an invalid state (no connections, no precalculated values) 
+     * @param instructions list of instructions
+     */
+    fun extractBlocks(instructions: List<Instruction>): MutableList<Block> {
         var currentList = ArrayDeque<Instruction>()
-        var lastLabel = StaticUtils.nextLabel()
+        val labelProvider = { StaticUtils.nextLabel() }
+        var lastLabel = labelProvider.invoke()
         val blocks = mutableListOf<Block>()
-        var tempLabel = 0
         var finishBlock = false
         for (instruction in instructions) {
             when (instruction) {
@@ -235,8 +241,7 @@ object SSATransformer {
                 }
                 else -> {
                     if (finishBlock) {
-                        val newLabel = ".TL$tempLabel"
-                        tempLabel++
+                        val newLabel = labelProvider.invoke()
                         val currentLast = currentList.last
                         if (currentLast !is UnconditionalBranchInstruction) {
                             currentList.add(Jump(newLabel))
@@ -254,8 +259,8 @@ object SSATransformer {
         for (block in blocks) {
             val firstUnconditionalBranchIndex = block.instructions
                     .mapIndexed { index, instruction -> index to instruction }
-                    .first { (_, instruction) -> instruction is UnconditionalBranchInstruction }
-                    .first
+                    .firstOrNull { (_, instruction) -> instruction is UnconditionalBranchInstruction }
+                    ?.first ?: continue
             val toDrop = block.instructions.size - firstUnconditionalBranchIndex - 1
             for (counter in 0..toDrop - 1) {
                 block.instructions.removeLast()

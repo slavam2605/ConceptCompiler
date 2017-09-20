@@ -15,20 +15,21 @@ import moklev.utils.ASMBuilder
  */
 class StackFree(val size: Int) : ReadonlyInstruction() {
     override fun toString(): String = "stack_free($size)"
-        
+
     override val usedValues: List<CompileTimeValue> = emptyList()
 
-    override val allValues: List<CompileTimeValue> = emptyList()
+    override val allValues: List<String>
+        get() = listOf(size.toString())
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
 
     override fun simplify(): List<Instruction> = listOf(this)
 
-    override fun compile(builder: ASMBuilder, 
-                         blocks: Map<String, SSATransformer.Block>, 
-                         variableAssignment: VariableAssignment, 
-                         currentBlockLabel: String, 
-                         liveRange: Map<String, LiveRange>, 
+    override fun compile(builder: ASMBuilder,
+                         blocks: Map<String, SSATransformer.Block>,
+                         variableAssignment: VariableAssignment,
+                         currentBlockLabel: String,
+                         liveRange: Map<String, LiveRange>,
                          indexInBlock: Int) = Unit
 
     override fun coloringPreferences(): List<ColoringPreference> = emptyList()

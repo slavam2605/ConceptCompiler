@@ -7,13 +7,14 @@ import moklev.utils.ASMBuilder
 
 /**
  * Internal instruction that marks [lhs] as externally initialized value
- * 
+ *
  * @author Moklev Vyacheslav
  */
 class ExternalAssign(lhs: Variable) : AssignInstruction(lhs) {
     override val usedValues: List<CompileTimeValue> = emptyList()
 
-    override val allValues = listOf(lhs)
+    override val allValues
+        get() = listOf(lhs.toString())
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction = this
 

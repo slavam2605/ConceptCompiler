@@ -11,7 +11,7 @@ import moklev.utils.ASMBuilder
 
 /**
  * Call of function with result
- * 
+ *
  * @author Moklev Vyacheslav
  */
 class AssignCall(lhs: Variable, val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : AssignInstruction(lhs) {
@@ -19,11 +19,13 @@ class AssignCall(lhs: Variable, val funcName: String, val args: List<Pair<Type, 
 
     override val usedValues = args.map { it.second }
 
-    override val allValues = mutableListOf<CompileTimeValue>().apply {
-        add(lhs)
-        args.mapTo(this) { it.second }
-    }
-    
+    override val allValues
+        get() = mutableListOf<String>().apply {
+            add(lhs.toString())
+            add(funcName)
+            args.mapTo(this) { it.second.toString() }
+        }
+
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
         val newArgs = args.map { it.first to if (it.second == variable) value else it.second }
         return AssignCall(lhs, funcName, newArgs)
