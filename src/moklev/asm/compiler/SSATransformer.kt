@@ -3,7 +3,7 @@ package moklev.asm.compiler
 import moklev.asm.instructions.*
 import moklev.asm.interfaces.*
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
@@ -110,8 +110,8 @@ object SSATransformer {
         val startBlock = Block(startBlockLabel, ArrayDeque())
         // all registers are reserved to prevent invalid coloring with usage of raw registers
         for (argumentRegister in SystemVFunctionArgumentsLoader.integerAssignment) {
-            val newVar = Variable("#${argumentRegister.toString().toLowerCase()}")
-            startBlock.instructions.add(Assign(newVar, argumentRegister))
+            val newVar = Variable( "#${argumentRegister.toString().toLowerCase()}")
+            startBlock.instructions.add(Assign(newVar, argumentRegister.ofType(Type.Int64)))
         }
 
         startBlock.instructions.addAll(
@@ -149,7 +149,7 @@ object SSATransformer {
                     currentStackOffset += instruction.size
                     newInstructions.add(Assign(
                             instruction.lhs,
-                            StackAddrVariable(currentStackOffset, instruction.size)
+                            StackAddrVariable(currentStackOffset, Type.Pointer(instruction.allocType))
                     ))
                 } else if (instruction !is StackFree) {
                     newInstructions.add(instruction)
@@ -373,6 +373,7 @@ object SSATransformer {
             for (instruction in block.instructions) {
                 if (instruction is Phi) {
                     newInstructions.add(Phi(
+                            instruction.type,
                             instruction.lhs,
                             instruction.pairs.filter { it.first in prevBlocks }
                     ))
@@ -406,12 +407,12 @@ object SSATransformer {
             }
 
             println("\n^^^^^^^^^ End of code ^^^^^^^^^\n")
-
+        
             var (changed, newBlocks) = propagateConstants(blocks)
             blocks = simplifyInstructions(newBlocks)
             blocks = recalcBlockConnectivity(blocks, startBlockLabel)
             blocks = eliminateStackVariables(blocks)
-
+            
             changed = changed || !compareInstructionSet(blocks, newBlocks)
             if (!changed) {
                 break
@@ -463,10 +464,14 @@ object SSATransformer {
             for (instruction in block.instructions) {
                 if (instruction is Store && instruction.lhsAddr is StackAddrVariable
                         && instruction.lhsAddr in used) {
-                    newInstructions.add(Assign(Variable(newName[instruction.lhsAddr]!!), instruction.rhs))
+                    newInstructions.add(Assign(Variable(
+                            newName[instruction.lhsAddr]!!
+                    ), instruction.rhs))
                 } else if (instruction is Load && instruction.rhsAddr is StackAddrVariable
                         && instruction.rhsAddr in used) {
-                    newInstructions.add(Assign(instruction.lhs, Variable(newName[instruction.rhsAddr]!!)))
+                    newInstructions.add(Assign(instruction.lhs, Variable(
+                            newName[instruction.rhsAddr]!!
+                    )))
                 } else {
                     newInstructions.add(instruction)
                 }
@@ -564,13 +569,18 @@ object SSATransformer {
                 if (instruction is Assign && instruction.rhs1 is Undefined) {
                     val phiArgs = block.prevBlocks
                             .mapNotNull {
-                                val phiVariable = Variable(instruction.lhs.name, it.lastVariableVersions[instruction.lhs.name]!!)
+                                val phiVariable = Variable(
+                                        instruction.lhs.name, 
+                                        it.lastVariableVersions[instruction.lhs.name]!!
+                                )
                                 if (phiVariable.toString() !in defined)
                                     return@mapNotNull null
                                 it.label to phiVariable
                             }
                     if (phiArgs.isNotEmpty()) {
-                        list.add(Phi(instruction.lhs, phiArgs))
+                        val type = phiArgs.firstOrNull { it.second.type != Type.Undefined }?.second?.type 
+                                ?: error("All parts of phi instruction does not have a type: ${instruction.lhs}; $phiArgs")
+                        list.add(Phi(type, instruction.lhs, phiArgs))
                     }
                 } else {
                     list.add(instruction)

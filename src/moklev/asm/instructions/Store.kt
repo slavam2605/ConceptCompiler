@@ -4,14 +4,13 @@ import moklev.asm.compiler.LiveRange
 import moklev.asm.compiler.SSATransformer
 import moklev.asm.interfaces.Instruction
 import moklev.asm.interfaces.MemoryInstruction
-import moklev.asm.interfaces.ReadonlyInstruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * @author Moklev Vyacheslav
  */
-class Store(val lhsAddr: CompileTimeValue, val rhs: CompileTimeValue) : ReadonlyInstruction(), MemoryInstruction {
+class Store(val lhsAddr: CompileTimeValue, val rhs: CompileTimeValue) : Instruction, MemoryInstruction {
     override fun toString(): String = "store $lhsAddr, $rhs"
 
     override val usedValues: List<CompileTimeValue> = listOf(lhsAddr, rhs)

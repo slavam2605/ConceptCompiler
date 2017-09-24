@@ -4,6 +4,7 @@ import moklev.asm.instructions.Assign
 import moklev.asm.instructions.Jump
 import moklev.asm.interfaces.Label
 import moklev.asm.utils.Int64Const
+import moklev.asm.utils.Type.*
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.compiler.CompilationState
 import moklev.dummy_lang.compiler.Scope

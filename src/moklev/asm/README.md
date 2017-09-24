@@ -80,6 +80,26 @@ preceded with other instructions (basic block must have an optional prefix of
 
 In this part of text you can ask -- "is it your own attempt to implement LLVM"? Yes, it is.
 
+Type system
+-----------
+
+Concept-ASM is a strongly typed language. Types are used in verification of code, code 
+generation and optimizations. In Concept-ASM there are 5 groups of types:
+* Primitive integer types
+* Primitive floating types
+* Pointer types
+* Struct types
+* Blob types
+
+Primitive integer types are predefined integer types: `int64`, `int32`, `int16`, `int8`.
+Primitive floating types are predefined floating types: `double`, `float`.
+Pointer types are the ordinary pointers to a memory of arbitrary type. Examples of 
+pointer types: `int64*`, `double*`, `{int64, int32}*`.
+Struct types or tuples are the types that contain some list of other types. Examples of
+struct types: `{int64, int64}`, `{double, int64, int64*}`. Struct types can be nested:
+`{int64, {float, float}, int64*}` and even empty: `{}`. Blob types are types of fixed 
+size and with unknown structure. For example type `blob(128)` is a type of size 128 bit.
+
 Calling convention
 ------------------
 Concept-ASM functions follow System V calling convention for primitive arguments of size 8:

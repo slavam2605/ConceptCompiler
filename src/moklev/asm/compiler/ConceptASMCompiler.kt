@@ -1,9 +1,10 @@
 package moklev.asm.compiler
 
 import moklev.asm.instructions.ExternalAssign
+import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.interfaces.RawTextInstruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 import java.util.*
 
 /**
@@ -35,22 +36,24 @@ const val endBlockLabel = ".func_end"
 object IntArgumentsAssignment {
     operator fun get(index: Int): StaticAssemblyValue {
         return when (index) {
-            0 -> RDI
-            1 -> RSI
-            2 -> RDX
-            3 -> RCX
-            4 -> R8
-            5 -> R9
-            else -> InStack(-8 * (index - 4)) // TODO WAT
+            0 -> RDI(Type.Undefined)
+            1 -> RSI(Type.Undefined)
+            2 -> RDX(Type.Undefined)
+            3 -> RCX(Type.Undefined)
+            4 -> R8(Type.Undefined)
+            5 -> R9(Type.Undefined)
+            else -> InStack(-8 * (index - 4), Type.Undefined) // TODO WAT
         }
     }
 }
 
 val calleeToSave = listOf(
         RBP, RBX, R12, R13, R14, R15
-)
+).map { it(Type.Undefined) }
 
 fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
+    StaticUtils.state.clearVarTypes()
+    StaticUtils.state.assignTypes(instructions)
     dest.appendLine("global $name")
     dest.appendLine("$name:")
 
@@ -95,16 +98,29 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     
     val intArguments = arguments
             .asSequence()
-            .filter { it.first == Type.INT }
+            .filter { it.first == Type.Int64 }
             .map { it.second }
             .toList()
 
     println("conflictGraph = $conflictGraph")
     
+    val nodes = blocks
+            .flatMap { it.instructions }
+            .flatMap { 
+                val list = it.usedValues.toMutableList()
+                if (it is AssignInstruction)
+                    list.add(it.lhs)
+                list
+            }
+            .map { it.toString() to it.type }
+            .toSet()
+            .toList()
+    
 //    val variableAssignment = advancedColorGraph(
     val variableAssignment = dummyColorGraph(
+            nodes,
 //            listOf(RAX, RBX, RCX, RDX, R8, R9, R10, R11), // TODO normal registers
-            listOf(RDI, RSI, RDX, RCX, R8, R9, RAX, R10), // TODO normal registers
+            listOf(RDI, RSI, RDX, RCX, R8, R9, RAX, R10).map { it(Type.Undefined) }, // TODO normal registers
             mapOf(
                     startBlockLabel to intArguments.mapIndexedNotNull { i, s ->
                             val name = externalNames[s] ?: return@mapIndexedNotNull null

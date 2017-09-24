@@ -3,12 +3,15 @@ package moklev.asm.instructions
 import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * @author Moklev Vyacheslav
  */
-class StackAlloc(lhs: Variable, val size: Int) : AssignInstruction(lhs) {
+class StackAlloc(override val type: Type, override val lhs: Variable, val allocType: Type) : AssignInstruction {
+    val size: Int
+        get() = allocType.size
+    
     override fun toString(): String = "$lhs = stack_alloc($size)"
 
     override val usedValues: List<CompileTimeValue> = emptyList()

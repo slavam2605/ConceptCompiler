@@ -4,17 +4,15 @@ import moklev.asm.compiler.IntArgumentsAssignment
 import moklev.asm.compiler.LiveRange
 import moklev.asm.compiler.SSATransformer
 import moklev.asm.interfaces.Instruction
-import moklev.asm.interfaces.ReadonlyInstruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
-import moklev.utils.Either
+import moklev.asm.utils.ASMBuilder
 
 /**
  * Call of function (subroutine)
  *
  * @author Moklev Vyacheslav
  */
-class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : ReadonlyInstruction() {
+class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : Instruction {
     override fun toString() = "call $funcName(${args.joinToString()})"
 
     override val usedValues = args.map { it.second }
@@ -34,7 +32,7 @@ class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) :
     override fun coloringPreferences(): List<ColoringPreference> {
         return args
                 .asSequence()
-                .filter { it.first == Type.INT }
+                .filter { it.first == Type.Int64 }
                 .take(6)
                 .mapIndexedNotNull { i, pair ->
                     val variable = pair.second as? Variable ?: return@mapIndexedNotNull null
@@ -51,6 +49,7 @@ class Call(val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) :
             liveRange: Map<String, LiveRange>,
             indexInBlock: Int
     ) {
+        // TODO [NOT_CORRECT] not correct for short ints like int32, int16, ...
         compileCall(
                 builder,
                 funcName,

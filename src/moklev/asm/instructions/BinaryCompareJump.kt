@@ -3,12 +3,12 @@ package moklev.asm.instructions
 import moklev.asm.interfaces.BranchInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * @author Vyacheslav Moklev
  */
-class BinaryCompareJump(val op: String, val rhs1: CompileTimeValue, val rhs2: CompileTimeValue, label: String) : BranchInstruction(label) {
+class BinaryCompareJump(val op: String, val rhs1: CompileTimeValue, val rhs2: CompileTimeValue, override val label: String) : BranchInstruction {
     companion object {
         val instruction = hashMapOf(// TODO maybe change instructions
                 "==" to "je",

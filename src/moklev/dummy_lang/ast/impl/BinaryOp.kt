@@ -5,6 +5,7 @@ import moklev.asm.instructions.Mod
 import moklev.asm.instructions.Add
 import moklev.asm.instructions.Mul
 import moklev.asm.instructions.Sub
+import moklev.asm.utils.Type.Undefined
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState
@@ -27,15 +28,17 @@ class BinaryOp(ctx: ParserRuleContext, val op: String, val left: Expression, val
     }
 
     override fun compileResult(builder: FunctionBuilder, state: CompilationState, scope: Scope): String {
+        val leftType = left.getType(state, scope)?.toASMType() ?: Undefined
+        val rightType = right.getType(state, scope)?.toASMType() ?: Undefined
         val leftResult = left.compileResult(builder, state, scope)
         val rightResult = right.compileResult(builder, state, scope)
         val result = builder.tempVar
         builder.add(when (op) {
-            "+" -> Add(Variable(result), Variable(leftResult), Variable(rightResult))
-            "*" -> Mul(Variable(result), Variable(leftResult), Variable(rightResult))
-            "-" -> Sub(Variable(result), Variable(leftResult), Variable(rightResult))
-            "/" -> Div(Variable(result), Variable(leftResult), Variable(rightResult))
-            "%" -> Mod(Variable(result), Variable(leftResult), Variable(rightResult))
+            "+" -> Add(leftType, Variable(result), Variable(leftResult), Variable(rightResult))
+            "*" -> Mul(leftType, Variable(result), Variable(leftResult), Variable(rightResult))
+            "-" -> Sub(leftType, Variable(result), Variable(leftResult), Variable(rightResult))
+            "/" -> Div(leftType, Variable(result), Variable(leftResult), Variable(rightResult))
+            "%" -> Mod(leftType, Variable(result), Variable(leftResult), Variable(rightResult))
             else -> TODO("not implemented")
         })
         return result

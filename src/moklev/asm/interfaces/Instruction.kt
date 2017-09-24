@@ -4,25 +4,25 @@ import moklev.asm.compiler.LiveRange
 import moklev.asm.compiler.SSATransformer
 import moklev.asm.instructions.Phi
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * @author Vyacheslav Moklev
  */
 
 /**
- * Super class of every instruction of Concept-ASM three-address code
+ * Interface of every instruction of Concept-ASM three-address code
  */
-sealed class Instruction {
+interface Instruction {
     /**
      * All values used in the right (read-only) part of instruction
      */
-    abstract val usedValues: List<CompileTimeValue>
+    val usedValues: List<CompileTimeValue>
 
     /**
      * String representation of all values used in the instruction (in fixed order)
      */
-    abstract val allValues: List<String>
+    val allValues: List<String>
 
     /**
      * Substitute {variable := value} in the right (read-only) part of instruction
@@ -31,7 +31,7 @@ sealed class Instruction {
      * @param value [CompileTimeValue] that should be instead of [variable]
      * @return Usually copy of instruction (but not always) with substitution done
      */
-    abstract fun substitute(variable: Variable, value: CompileTimeValue): Instruction
+    fun substitute(variable: Variable, value: CompileTimeValue): Instruction
 
     /**
      * Get simplified version of instruction. It can be transformed (return value is a singleton list),
@@ -40,12 +40,12 @@ sealed class Instruction {
      *
      * @return List of optimized instructions
      */
-    abstract fun simplify(): List<Instruction>
+    fun simplify(): List<Instruction>
 
     /**
      * Compile an instruction into assembly, using [builder] and information about basic blocks
      */
-    abstract fun compile(
+    fun compile(
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
@@ -59,21 +59,30 @@ sealed class Instruction {
      *
      * @return list of coloring preferences
      */
-    abstract fun coloringPreferences(): List<ColoringPreference>
+    fun coloringPreferences(): List<ColoringPreference>
 }
 
 /**
  * An instruction that can modify variable. The only variable that can be
  * modified is [lhs]
  */
-abstract class AssignInstruction(val lhs: Variable) : Instruction() {
-    abstract fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>)
+interface AssignInstruction : Instruction {
+    val type: Type
+    val lhs: Variable
+    
+    fun init(state: ASMState) {
+        state.setVarType(lhs.name, type)
+    }
+    
+    fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>)
 
     override fun compile(
             builder: ASMBuilder,
             blocks: Map<String, SSATransformer.Block>,
             variableAssignment: VariableAssignment,
-            currentBlockLabel: String, liveRange: Map<String, LiveRange>, indexInBlock: Int
+            currentBlockLabel: String, 
+            liveRange: Map<String, LiveRange>, 
+            indexInBlock: Int
     ) {
         val localAssignment = variableAssignment[currentBlockLabel]!!
         if (localAssignment[lhs.toString()] != null) {
@@ -86,8 +95,10 @@ abstract class AssignInstruction(val lhs: Variable) : Instruction() {
  * Branch instruction that can change a control flow. [label] is a label of the basic block
  * that can be jumped onto
  */
-abstract class BranchInstruction(val label: String) : Instruction() {
-    abstract fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>, destLabel: String)
+interface BranchInstruction : Instruction {
+    val label: String
+    
+    fun compileBranch(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>, destLabel: String)
 
     override fun compile(
             builder: ASMBuilder,
@@ -134,14 +145,9 @@ abstract class BranchInstruction(val label: String) : Instruction() {
 }
 
 /**
- * Base class for instructions that does not directly modify their arguments
- */
-abstract class ReadonlyInstruction : Instruction()
-
-/**
  * Actually not an instruction, just label to jump on
  */
-class Label(val name: String) : Instruction() {
+class Label(val name: String) : Instruction {
     override fun toString() = "$name:"
     override val usedValues = emptyList<CompileTimeValue>()
     override val allValues
@@ -162,7 +168,7 @@ class Label(val name: String) : Instruction() {
 /**
  * Instruction with no arguments and special semantics like `ret` or `leave`
  */
-class RawTextInstruction(val name: String) : Instruction() {
+class RawTextInstruction(val name: String) : Instruction {
     override val usedValues: List<CompileTimeValue> = emptyList()
 
     override val allValues: List<String>

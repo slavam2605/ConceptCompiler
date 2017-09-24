@@ -37,6 +37,7 @@ FALSE_LITERAL:  'false';
 
 FUN_KW:         'fun';
 I64_KW:         'i64';
+I32_KW:         'i32';
 BOOL_KW:        'bool';
 VAR_KW:         'var';
 RETURN_KW:      'return';

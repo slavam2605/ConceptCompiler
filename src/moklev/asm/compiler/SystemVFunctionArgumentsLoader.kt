@@ -5,14 +5,14 @@ import moklev.asm.instructions.StackAlloc
 import moklev.asm.instructions.Store
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * @author Moklev Vyacheslav
  */
 // TODO add support of floating arguments
 object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
-    val integerAssignment = listOf(RDI, RSI, RDX, RCX, R8, R9)
+    val integerAssignment = listOf(RDI, RSI, RDX, RCX, R8, R9).map { it(Type.Undefined) }
 
     override fun pushArguments(builder: ASMBuilder, arguments: List<StaticAssemblyValue>): Int {
         var integerIndex = 0
@@ -32,7 +32,7 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
                             list.add(arg to integerAssignment[integerIndex])
                             integerIndex++
                         } else {
-                            list.add(arg to InStack(maxStackOffset - stackOffset, arg.size, true))
+                            list.add(arg to InStack(maxStackOffset - stackOffset, arg.type, true))
                             stackOffset += arg.size
                         }
                     }
@@ -41,12 +41,12 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
                         var size = arg.size
                         var offset = 0
                         while (size > 0) {
-                            val valuePart = InStack(arg.offset - offset, minOf(8, size))
+                            val valuePart = InStack(arg.offset - offset, Type.Blob(minOf(8, size)))
                             if (integerIndex < integerAssignment.size) {
                                 list.add(valuePart to integerAssignment[integerIndex])
                                 integerIndex++
                             } else {
-                                list.add(valuePart to InStack(maxStackOffset - stackOffset, arg.size, true))
+                                list.add(valuePart to InStack(maxStackOffset - stackOffset, Type.Blob(arg.size), true))
                                 stackOffset += arg.size
                             }
                             size -= valuePart.size
@@ -68,7 +68,7 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
         val reassignmentList = buildReassignment(arguments, arrayListOf())
         compileReassignment(builder, reassignmentList)
         if (stackOffset > 0)
-            builder.appendLine("sub", RSP, stackOffset)
+            builder.appendLine("sub", RSP(Type.Undefined), stackOffset)
         return stackOffset
     }
     
@@ -76,25 +76,31 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
         // [rbp + 16] ... [rbp + 23] -- int_arg7 (when pull)
         val list = arrayListOf<Instruction>()
         var integerIndex = 0
-        var stackOffset = 16
+        val stackOffset = 16
         
         for ((type, name) in arguments) {
+            val pointerType = Type.Pointer(type)
             val argumentVar = Variable(name)
-            list.add(StackAlloc(argumentVar, type.size))
+            list.add(StackAlloc(pointerType, argumentVar, type))
             var size = type.size
             var offset = 0
             while (size > 0) {
                 val shiftedVar = Variable("$name#offset$offset")
-                list.add(Add(shiftedVar, argumentVar, Int64Const(offset.toLong())))
+                list.add(Add(pointerType, shiftedVar, argumentVar, Int64Const(offset.toLong())))
                 if (integerIndex < integerAssignment.size) {
-                    list.add(Store(shiftedVar, Variable("#${integerAssignment[integerIndex].toString().toLowerCase()}")))
+                    val blobSize = minOf(8, size)
+                    list.add(Store(shiftedVar, Variable(
+                            "#${integerAssignment[integerIndex].toString().toLowerCase()}"
+                    ).ofType(type)))
                     integerIndex++
+                    offset += blobSize
+                    size -= blobSize
                 } else {
-                    list.add(Store(shiftedVar, InStack(-stackOffset)))
-                    stackOffset += 8
+                    // TODO [REVIEW] `type` works only is it is entirely in stack, but for several parts 
+                    // TODO ... it will not eliminated and for now it is ok but need to be reworked
+                    list.add(Store(shiftedVar, InStack(-stackOffset, type)))
+                    break
                 }
-                offset += 8
-                size -= 8
             }
         }
         

@@ -7,14 +7,15 @@ import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
 import moklev.asm.utils.Target
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * Call of function with result
  *
  * @author Moklev Vyacheslav
  */
-class AssignCall(lhs: Variable, val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : AssignInstruction(lhs) {
+// TODO [REVIEW] args do not need type anymore since CompileTimeValue has already contain it
+class AssignCall(override val type: Type, override val lhs: Variable, val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : AssignInstruction {
     override fun toString() = "$lhs = call $funcName(${args.joinToString()})"
 
     override val usedValues = args.map { it.second }
@@ -28,17 +29,17 @@ class AssignCall(lhs: Variable, val funcName: String, val args: List<Pair<Type, 
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
         val newArgs = args.map { it.first to if (it.second == variable) value else it.second }
-        return AssignCall(lhs, funcName, newArgs)
+        return AssignCall(type, lhs, funcName, newArgs)
     }
 
     override fun simplify() = listOf(this)
 
     override fun coloringPreferences(): List<ColoringPreference> {
         val result = ArrayList<ColoringPreference>()
-        result.add(Target("$lhs", RAX)) // TODO depend on type
+        result.add(Target("$lhs", RAX(type))) // TODO [NOT_CORRECT] for types larger than 8 RAX is not enough
         args
                 .asSequence()
-                .filter { it.first == Type.INT }
+                .filter { it.first == Type.Int64 }
                 .take(6)
                 .mapIndexedNotNullTo(result) { i, pair ->
                     val variable = pair.second as? Variable ?: return@mapIndexedNotNullTo null
@@ -59,6 +60,7 @@ class AssignCall(lhs: Variable, val funcName: String, val args: List<Pair<Type, 
             liveRange: Map<String, LiveRange>,
             indexInBlock: Int
     ) {
+        // TODO [NOT_CORRECT] not correct for short ints like int32, int16, ...
         compileCall(
                 builder,
                 funcName,

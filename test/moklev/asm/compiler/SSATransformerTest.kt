@@ -150,7 +150,7 @@ class SSATransformerTest {
                 Jump("C")
         ))
         val patternC = PatternBlock("C", listOf(
-                Phi(Variable("$3"), listOf(
+                Phi(Type.Int64, Variable("$3"), listOf(
                         "A" to Variable("$1"),
                         "B" to Variable("$2")
                 )),
@@ -170,12 +170,12 @@ class SSATransformerTest {
                 Jump("loop")
         )))
         val blockLoop = Block("loop", ArrayDeque(listOf(
-                Add(Variable("i"), Variable("i"), Int64Const(1)),
+                Add(Type.Int64, Variable("i"), Variable("i"), Int64Const(1)),
                 BinaryCompareJump(">", Variable("i"), Int64Const(10), "after_loop"),
                 Jump("loop")
         )))
         val blockAfterLoop = Block("after_loop", ArrayDeque(listOf<Instruction>(
-                Return(Type.INT, Variable("x"))
+                Return(Type.Int64, Variable("x"))
         )))
         blockStart.addNextBlock(blockLoopStart)
         blockLoopStart.addNextBlock(blockLoop)
@@ -193,19 +193,19 @@ class SSATransformerTest {
                 Jump("loop")
         ))
         val patternLoop = PatternBlock("loop", listOf(
-                Phi(Variable("$2"), listOf(
+                Phi(Type.Int64, Variable("$2"), listOf(
                         "loop_start" to Variable("$1"),
                         "loop" to Variable("$3")
                 )),
-                Add(Variable("$3"), Variable("$2"), Int64Const(1)),
+                Add(Type.Int64, Variable("$3"), Variable("$2"), Int64Const(1)),
                 BinaryCompareJump(">", Variable("$3"), Int64Const(10), "after_loop"),
                 Jump("loop")
         ))
         val patternAfterLoop = PatternBlock("after_loop", listOf(
-                Phi(Variable("$4"), listOf(
+                Phi(Type.Int64, Variable("$4"), listOf(
                         "loop" to Variable("$3")
                 )),
-                Return(Type.INT, Variable("x"))
+                Return(Type.Int64, Variable("x"))
         ))
 
         assertBlocksMatch(result, listOf(patternStart, patternLoopStart, patternLoop, patternAfterLoop))

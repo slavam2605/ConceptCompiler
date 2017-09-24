@@ -9,7 +9,7 @@ import moklev.asm.utils.Variable
  *
  * @author Moklev Vyacheslav
  */
-abstract class UnaryInstruction(lhs: Variable, val rhs1: CompileTimeValue) : AssignInstruction(lhs) {
+abstract class UnaryInstruction(override val lhs: Variable, val rhs1: CompileTimeValue) : AssignInstruction {
     override val usedValues = listOf(rhs1)
 
     override val allValues

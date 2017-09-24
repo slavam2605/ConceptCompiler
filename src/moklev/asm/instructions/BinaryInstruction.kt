@@ -2,6 +2,7 @@ package moklev.asm.instructions
 
 import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.utils.CompileTimeValue
+import moklev.asm.utils.StaticUtils
 import moklev.asm.utils.Variable
 
 /**
@@ -9,7 +10,7 @@ import moklev.asm.utils.Variable
  *
  * @author Moklev Vyacheslav
  */
-abstract class BinaryInstruction(lhs: Variable, val rhs1: CompileTimeValue, val rhs2: CompileTimeValue) : AssignInstruction(lhs) {
+abstract class BinaryInstruction(override val lhs: Variable, val rhs1: CompileTimeValue, val rhs2: CompileTimeValue) : AssignInstruction {
     override val usedValues = listOf(rhs1, rhs2)
 
     override val allValues

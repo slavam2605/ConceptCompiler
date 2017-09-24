@@ -82,13 +82,13 @@ internal class PointersTest : RunnerTestBase() {
             var currentElement: i64;
             currentElement = 1;
             for (i = 0;; i < 10; i = i + 1;) {
-                *(i64*)(p + 8 * i) = currentElement;
+                *(i64*)((i64) p + 8 * i) = currentElement;
                 currentElement = currentElement * 2;
             }
             for (i = 1;; i < 10; i = i + 1;) {
-                *(i64*)(p + 8 * i) = *(i64*)(p + 8 * i) + *(i64*)(p + 8 * i - 8);
+                *(i64*)((i64) p + 8 * i) = *(i64*)((i64) p + 8 * i) + *(i64*)((i64) p + 8 * i - 8);
             }
-            printInt(*(i64*)(p + 8 * 9));
+            printInt(*(i64*)((i64) p + 8 * 9));
             return 0;
         }
     """, 1023)

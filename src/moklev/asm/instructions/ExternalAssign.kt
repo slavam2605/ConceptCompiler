@@ -3,14 +3,14 @@ package moklev.asm.instructions
 import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * Internal instruction that marks [lhs] as externally initialized value
  *
  * @author Moklev Vyacheslav
  */
-class ExternalAssign(lhs: Variable) : AssignInstruction(lhs) {
+class ExternalAssign(override val type: Type, override val lhs: Variable) : AssignInstruction {
     override val usedValues: List<CompileTimeValue> = emptyList()
 
     override val allValues

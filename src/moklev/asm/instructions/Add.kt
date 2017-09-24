@@ -2,16 +2,16 @@ package moklev.asm.instructions
 
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * @author Moklev Vyacheslav
  */
-class Add(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs, rhs1, rhs2) {
+class Add(override val type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs, rhs1, rhs2) {
     override fun toString() = "$lhs = $rhs1 + $rhs2"
     
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
-        return Add(lhs, if (rhs1 == variable) value else rhs1, if (rhs2 == variable) value else rhs2)
+        return Add(type, lhs, if (rhs1 == variable) value else rhs1, if (rhs2 == variable) value else rhs2)
     }
 
     override fun simplify(): List<Instruction> {
@@ -38,6 +38,7 @@ class Add(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
         val rhs1Value = rhs1.value(variableAssignment)!!
         val rhs2Value = rhs2.value(variableAssignment)!!
         
+        // TODO [NOT_CORRECT] not correct adding for short ints like int32, int16, ...
         compileBinaryOperation(builder, "add", lhsValue, rhs1Value, rhs2Value, symmetric = true)
     }
 }

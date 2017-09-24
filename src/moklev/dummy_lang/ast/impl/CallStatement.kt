@@ -2,6 +2,7 @@ package moklev.dummy_lang.ast.impl
 
 import moklev.asm.utils.Variable
 import moklev.asm.instructions.Call
+import moklev.asm.utils.Type
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.ast.interfaces.Statement
 import moklev.dummy_lang.compiler.CompilationState
@@ -16,9 +17,9 @@ class CallStatement(ctx: ParserRuleContext, val name: String, val arguments: Lis
     override fun compile(builder: FunctionBuilder, state: CompilationState, scope: Scope) {
         // TODO type check
         val typedResults = arguments.map {
-            val type = it.getType(state, scope) ?: return // TODO OOO
+            val type = it.getType(state, scope)?.toASMType() ?: Type.Undefined
             val result = it.compileResult(builder, state, scope)
-            type.toASMType() to Variable(result)
+            type to Variable(result)
         }
         builder.add(Call(name, typedResults))
     }

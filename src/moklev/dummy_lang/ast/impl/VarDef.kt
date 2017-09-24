@@ -1,6 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
 import moklev.asm.instructions.StackAlloc
+import moklev.asm.utils.Type.Pointer
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.ast.interfaces.Statement
@@ -19,7 +20,8 @@ class VarDef(ctx: ParserRuleContext, val name: String, val type: Type, val expre
         if (defined) {
             state.addWarning(ctx, "Shadowing: variable $name was already defined")
         }
-        builder.add(StackAlloc(Variable(name), type.sizeOf))
+        val pointerType = Pointer(type.toASMType())
+        builder.add(StackAlloc(pointerType, Variable(name), type.toASMType()))
         if (expression != null) 
             Assign(ctx, moklev.dummy_lang.ast.impl.Variable(ctx, name), expression)
                     .compile(builder, state, scope)

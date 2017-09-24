@@ -59,13 +59,15 @@ sealed class Type {
     fun toASMType(): moklev.asm.utils.Type {
         return when (this) {
             is PrimitiveType -> when (typeName) {
-                "i64" -> moklev.asm.utils.Type.INT
-                else -> error("Unknown primitive type")
+                "i64" -> moklev.asm.utils.Type.Int64
+                "i32" -> moklev.asm.utils.Type.Int32
+               else -> error("Unknown primitive type")
             }
-            is PointerType -> moklev.asm.utils.Type.INT
-            is StructType -> moklev.asm.utils.Type.RAW(sizeOf)
+            is PointerType -> moklev.asm.utils.Type.Pointer(this.sourceType.toASMType())
+            is StructType -> moklev.asm.utils.Type.Blob(sizeOf)
         }
     }
 }
 
 val INT_64 = Type.PrimitiveType("i64", 8)
+val INT_32 = Type.PrimitiveType("i32", 4)

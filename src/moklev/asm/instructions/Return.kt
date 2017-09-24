@@ -5,12 +5,14 @@ import moklev.asm.interfaces.BranchInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.interfaces.UnconditionalBranchInstruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * @author Moklev Vyacheslav
  */
-class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endBlockLabel), UnconditionalBranchInstruction {
+class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction, UnconditionalBranchInstruction {
+    override val label: String = endBlockLabel
+
     override val usedValues: List<CompileTimeValue> = listOf(rhs)
 
     override val allValues: List<String>
@@ -25,9 +27,10 @@ class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endB
     override fun simplify(): List<Instruction> = listOf(this)
 
     override fun coloringPreferences(): List<ColoringPreference> {
+        // TODO [NOT_CORRECT] depends on type
         if (rhs is Variable) {
             return listOf(
-                    Target("$rhs", RAX)
+                    Target("$rhs", RAX(type))
             )
         }
         return listOf()
@@ -38,9 +41,10 @@ class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction(endB
             variableAssignment: Map<String, StaticAssemblyValue>,
             destLabel: String
     ) {
+        // TODO [REVIEW] should check type == rhs.type
         when (type) {
-            Type.INT -> {
-                compileAssign(builder, RAX, rhs.value(variableAssignment)!!)
+            Type.Int64 -> {
+                compileAssign(builder, RAX(type), rhs.value(variableAssignment)!!)
                 builder.appendLine("jmp", destLabel)
             }
             else -> NotImplementedError()

@@ -23,6 +23,6 @@ class Return(ctx: ParserRuleContext, val result: Expression) : Statement(ctx) {
         }
         val resultName = result.compileResult(builder, state, scope)
         scope.freeAllAllocatedStacks(builder)
-        builder.add(Return(Type.INT, Variable(resultName))) // TODO lol get type somehow
+        builder.add(Return(resultType.toASMType(), Variable(resultName)))
     }
 }

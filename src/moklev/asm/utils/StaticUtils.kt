@@ -1,5 +1,8 @@
 package moklev.asm.utils
 
+import moklev.asm.compiler.SSATransformer
+import moklev.asm.interfaces.AssignInstruction
+
 /**
  * @author Moklev Vyacheslav
  */
@@ -11,4 +14,6 @@ object StaticUtils {
         labelCount += 1
         return label
     }
+    
+    val state = ASMState()
 }

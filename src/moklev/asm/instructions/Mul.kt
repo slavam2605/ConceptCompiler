@@ -2,19 +2,20 @@ package moklev.asm.instructions
 
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * @author Moklev Vyacheslav
  */
-class Mul(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs,  rhs1, rhs2) {
+class Mul(override val type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs,  rhs1, rhs2) {
     override fun toString(): String = "$lhs = $rhs1 * $rhs2"
     
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
-        return Mul(lhs, if (rhs1 == variable) value else rhs1, if (rhs2 == variable) value else rhs2)
+        return Mul(type, lhs, if (rhs1 == variable) value else rhs1, if (rhs2 == variable) value else rhs2)
     }
 
     override fun simplify(): List<Instruction> {
+        // TODO [NOT_CORRECT] not correct for short ints like int32, int16, ...
         if (rhs1 is Int64Const && rhs1.value == 1L) {
             return listOf(Assign(lhs, rhs2))
         }
@@ -41,7 +42,8 @@ class Mul(lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : Binar
         val lhsValue = lhs.value(variableAssignment)!!
         val rhs1Value = rhs1.value(variableAssignment)!!
         val rhs2Value = rhs2.value(variableAssignment)!!
-        
+
+        // TODO [NOT_CORRECT] not correct for short ints like int32, int16, ...
         compileBinaryOperation(builder, "imul", lhsValue, rhs1Value, rhs2Value, symmetric = true)
     }
 }

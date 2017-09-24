@@ -1,6 +1,7 @@
 package moklev.dummy_lang.ast.impl
 
 import moklev.asm.instructions.AssignCall
+import moklev.asm.utils.Type.*
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState
@@ -16,12 +17,13 @@ class Call(ctx: ParserRuleContext, val name: String, val arguments: List<Express
     override fun compileResult(builder: FunctionBuilder, state: CompilationState, scope: Scope): String {
         // TODO type check
         val typedResults = arguments.map { 
-            val type = it.getType(state, scope) ?: return "" // TODO OOO
+            val type = it.getType(state, scope)?.toASMType() ?: Undefined
             val result = it.compileResult(builder, state, scope)
-            type.toASMType() to Variable(result)
+            type to Variable(result)
         }
         val result = builder.tempVar
-        builder.add(AssignCall(Variable(result), name, typedResults))
+        val resultType = scope.resultType.toASMType()
+        builder.add(AssignCall(resultType, Variable(result), name, typedResults))
         return result
     }
 

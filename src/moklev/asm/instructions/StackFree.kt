@@ -3,17 +3,16 @@ package moklev.asm.instructions
 import moklev.asm.compiler.LiveRange
 import moklev.asm.compiler.SSATransformer
 import moklev.asm.interfaces.Instruction
-import moklev.asm.interfaces.ReadonlyInstruction
 import moklev.asm.utils.ColoringPreference
 import moklev.asm.utils.CompileTimeValue
 import moklev.asm.utils.Variable
 import moklev.asm.utils.VariableAssignment
-import moklev.utils.ASMBuilder
+import moklev.asm.utils.ASMBuilder
 
 /**
  * @author Moklev Vyacheslav
  */
-class StackFree(val size: Int) : ReadonlyInstruction() {
+class StackFree(val size: Int) : Instruction {
     override fun toString(): String = "stack_free($size)"
 
     override val usedValues: List<CompileTimeValue> = emptyList()

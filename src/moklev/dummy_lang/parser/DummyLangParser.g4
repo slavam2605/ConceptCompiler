@@ -58,7 +58,7 @@ exprList
 
 type
     :   type '*'                #pointerType
-    |   ('i64' | 'bool')        #primitiveType
+    |   ('i64' | 'i32' | 'bool')        #primitiveType
     |   IDENT                   #definedType
     ;
     

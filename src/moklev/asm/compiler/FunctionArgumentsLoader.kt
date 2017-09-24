@@ -1,9 +1,9 @@
 package moklev.asm.compiler
 
 import moklev.asm.interfaces.Instruction
+import moklev.asm.utils.ASMBuilder
 import moklev.asm.utils.StaticAssemblyValue
 import moklev.asm.utils.Type
-import moklev.utils.ASMBuilder
 
 /**
  * @author Moklev Vyacheslav

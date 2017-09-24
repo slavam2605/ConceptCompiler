@@ -2,6 +2,7 @@ package moklev.dummy_lang.ast.impl
 
 import moklev.asm.instructions.Assign
 import moklev.asm.utils.Int64Const
+import moklev.asm.utils.Type.Int64
 import moklev.asm.utils.Variable
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState

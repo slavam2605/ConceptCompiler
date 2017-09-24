@@ -3,8 +3,7 @@ package moklev.asm.instructions
 import moklev.asm.interfaces.AssignInstruction
 import moklev.asm.interfaces.Instruction
 import moklev.asm.utils.*
-import moklev.utils.ASMBuilder
-import moklev.utils.Either
+import moklev.asm.utils.ASMBuilder
 
 /**
  * Phi node of SSA graph. Controls rules of merging variable value from
@@ -12,7 +11,7 @@ import moklev.utils.Either
  *
  * @author Moklev Vyacheslav
  */
-class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : AssignInstruction(lhs) {
+class Phi(override val type: Type, override val lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : AssignInstruction {
     override fun toString(): String {
         return "$lhs = phi ${pairs.joinToString { "[${it.first}, ${it.second}]" }}"
     }
@@ -28,12 +27,13 @@ class Phi(lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : Assi
         }
 
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
-        return Phi(lhs, pairs.map {
+        return Phi(type, lhs, pairs.map {
             if (it.second == variable) it.first to value else it
         })
     }
 
     override fun simplify(): List<Instruction> {
+        // TODO [NOT_CORRECT] not correct for short ints like int32, int16, ...
         if (pairs.isEmpty())
             return emptyList()
         if (pairs.size == 1)

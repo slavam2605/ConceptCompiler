@@ -2,6 +2,7 @@ package moklev.dummy_lang.ast.impl
 
 import moklev.asm.instructions.BinaryCompareJump
 import moklev.asm.instructions.Jump
+import moklev.asm.utils.Type
 import moklev.dummy_lang.ast.interfaces.BooleanExpression
 import moklev.dummy_lang.ast.interfaces.Expression
 import moklev.dummy_lang.compiler.CompilationState
@@ -21,9 +22,8 @@ class BooleanBinaryOp(ctx: ParserRuleContext, val op: String, val left: Expressi
             labelIfTrue: String,
             labelIfFalse: String
     ) {
-        // TODO improve type check
-        left.getType(state, scope)
-        right.getType(state, scope)
+        val leftType = left.getType(state, scope)?.toASMType() ?: Type.Undefined
+        val rightType = right.getType(state, scope)?.toASMType() ?: Type.Undefined
         
         val leftValue = left.compileResult(builder, state, scope)
         val rightValue = right.compileResult(builder, state, scope)
