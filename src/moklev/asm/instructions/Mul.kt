@@ -7,7 +7,7 @@ import moklev.asm.utils.ASMBuilder
 /**
  * @author Moklev Vyacheslav
  */
-class Mul(override val type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs,  rhs1, rhs2) {
+class Mul(override var type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs,  rhs1, rhs2) {
     override fun toString(): String = "$lhs = $rhs1 * $rhs2"
     
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {

@@ -10,7 +10,7 @@ import moklev.asm.utils.ASMBuilder
  *
  * @author Moklev Vyacheslav
  */
-class ExternalAssign(override val type: Type, override val lhs: Variable) : AssignInstruction {
+class ExternalAssign(override var type: Type, override val lhs: Variable) : AssignInstruction {
     override val usedValues: List<CompileTimeValue> = emptyList()
 
     override val allValues

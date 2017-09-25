@@ -6,14 +6,22 @@ import moklev.asm.utils.*
 /**
  * @author Moklev Vyacheslav
  */
-class Coerce(override val type: Type, lhs: Variable, rhs1: CompileTimeValue) : UnaryInstruction(lhs, rhs1) {
+class Coerce(override var type: Type, lhs: Variable, rhs1: CompileTimeValue) : UnaryInstruction(lhs, rhs1) {
     override fun toString() = "$lhs = $rhs1 as $type"
     
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {
         return Coerce(type, lhs, if (rhs1 == variable) value else rhs1)
     }
 
-    override fun simplify(): List<Instruction> = listOf(this)
+    override fun simplify(): List<Instruction> {
+        if (rhs1 is Int64Const) {
+            when (type) {
+                Type.Int64 -> return listOf(Assign(lhs, rhs1))
+                // TODO [REVIEW] consider creating class Int32Const
+            }
+        }
+        return listOf(this)
+    }
 
     override fun coloringPreferences(): List<ColoringPreference> = listOf()
 

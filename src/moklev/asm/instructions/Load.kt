@@ -9,7 +9,7 @@ import moklev.asm.utils.ASMBuilder
 /**
  * @author Moklev Vyacheslav
  */
-class Load(override val type: Type, override val lhs: Variable, val rhsAddr: CompileTimeValue) : AssignInstruction, MemoryInstruction {
+class Load(override var type: Type, override val lhs: Variable, val rhsAddr: CompileTimeValue) : AssignInstruction, MemoryInstruction {
     override fun toString(): String = "$lhs = load $rhsAddr"
 
     override val usedValues: List<CompileTimeValue> = listOf(rhsAddr)

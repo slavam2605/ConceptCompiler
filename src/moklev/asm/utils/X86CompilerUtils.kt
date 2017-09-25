@@ -166,17 +166,19 @@ fun compileBinaryOperation(builder: ASMBuilder,
     // TODO [IMPROVE:CODE_GEN]
     val rhs1Temp = R14(rhs1.type)
     val rhs2Temp = R15(rhs2.type)
+    val lhsTemp = R13(lhs.type)
     
     compileAssign(builder, rhs1Temp, rhs1)
     compileAssign(builder, rhs2Temp, rhs2)
     
-    compileAssign(builder, lhs, rhs1Temp)
-    builder.appendLine(operation, lhs, rhs2Temp)
+    compileAssign(builder, lhsTemp, rhs1Temp)
+    builder.appendLine(operation, lhsTemp, rhs2Temp)
     
-    if (lhs != rhs1 && rhs1 !is ConstValue)
+    if (rhs1 !is ConstValue)
         compileAssign(builder, rhs1, rhs1Temp)
-    if (lhs != rhs2 && rhs2 !is ConstValue)
+    if (rhs2 !is ConstValue)
         compileAssign(builder, rhs2, rhs2Temp)
+    compileAssign(builder, lhs, lhsTemp)
     
 //    if (imm32Only && rhs2 is Int64Const && rhs2.value.toInt().toLong() != rhs2.value) {
 //        val tempRegister = if (lhs == rhs1 || lhs is InStack && rhs1 is InStack) R15(Type.Int64) else rhs1

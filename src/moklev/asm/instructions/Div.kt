@@ -10,7 +10,7 @@ import moklev.asm.utils.ASMBuilder
 /**
  * @author Moklev Vyacheslav
  */
-class Div(override val type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs, rhs1, rhs2) {
+class Div(override var type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs, rhs1, rhs2) {
     override fun toString() = "$lhs = $rhs1 / $rhs2"
     
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {

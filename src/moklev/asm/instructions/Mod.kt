@@ -9,7 +9,7 @@ import moklev.asm.utils.ASMBuilder
 /**
  * @author Moklev Vyacheslav
  */
-class Mod(override val type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs, rhs1, rhs2) {
+class Mod(override var type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: CompileTimeValue) : BinaryInstruction(lhs, rhs1, rhs2) {
     override fun toString() = "$lhs = $rhs1 % $rhs2"
     
     override fun substitute(variable: Variable, value: CompileTimeValue): Instruction {

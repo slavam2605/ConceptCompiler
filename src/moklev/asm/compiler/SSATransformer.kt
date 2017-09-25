@@ -578,9 +578,7 @@ object SSATransformer {
                                 it.label to phiVariable
                             }
                     if (phiArgs.isNotEmpty()) {
-                        val type = phiArgs.firstOrNull { it.second.type != Type.Undefined }?.second?.type 
-                                ?: error("All parts of phi instruction does not have a type: ${instruction.lhs}; $phiArgs")
-                        list.add(Phi(type, instruction.lhs, phiArgs))
+                        list.add(Phi(Type.Undefined, instruction.lhs, phiArgs))
                     }
                 } else {
                     list.add(instruction)

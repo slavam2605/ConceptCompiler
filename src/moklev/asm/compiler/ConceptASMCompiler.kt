@@ -52,8 +52,6 @@ val calleeToSave = listOf(
 ).map { it(Type.Undefined) }
 
 fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
-    StaticUtils.state.clearVarTypes()
-    StaticUtils.state.assignTypes(instructions)
     dest.appendLine("global $name")
     dest.appendLine("$name:")
 
@@ -69,6 +67,10 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
         }
     }
 
+    StaticUtils.state.clearVarTypes()
+    StaticUtils.state.inferTypes(blocks.asSequence().flatMap { it.instructions.asSequence() }.asIterable())
+    
+    
     println("\n========= Transformed SSA code ========\n")
 
     for (block in blocks) {

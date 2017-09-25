@@ -8,7 +8,7 @@ import moklev.asm.utils.ASMBuilder
 /**
  * @author Moklev Vyacheslav
  */
-class StackAlloc(override val type: Type, override val lhs: Variable, val allocType: Type) : AssignInstruction {
+class StackAlloc(override var type: Type, override val lhs: Variable, val allocType: Type) : AssignInstruction {
     val size: Int
         get() = allocType.size
     

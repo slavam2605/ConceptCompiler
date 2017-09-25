@@ -15,7 +15,7 @@ import moklev.asm.utils.ASMBuilder
  * @author Moklev Vyacheslav
  */
 // TODO [REVIEW] args do not need type anymore since CompileTimeValue has already contain it
-class AssignCall(override val type: Type, override val lhs: Variable, val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : AssignInstruction {
+class AssignCall(override var type: Type, override val lhs: Variable, val funcName: String, val args: List<Pair<Type, CompileTimeValue>>) : AssignInstruction {
     override fun toString() = "$lhs = call $funcName(${args.joinToString()})"
 
     override val usedValues = args.map { it.second }

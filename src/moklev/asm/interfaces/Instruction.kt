@@ -67,7 +67,7 @@ interface Instruction {
  * modified is [lhs]
  */
 interface AssignInstruction : Instruction {
-    val type: Type
+    var type: Type
     val lhs: Variable
     
     fun init(state: ASMState) {

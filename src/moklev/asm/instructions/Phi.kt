@@ -11,7 +11,7 @@ import moklev.asm.utils.ASMBuilder
  *
  * @author Moklev Vyacheslav
  */
-class Phi(override val type: Type, override val lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : AssignInstruction {
+class Phi(override var type: Type, override val lhs: Variable, val pairs: List<Pair<String, CompileTimeValue>>) : AssignInstruction {
     override fun toString(): String {
         return "$lhs = phi ${pairs.joinToString { "[${it.first}, ${it.second}]" }}"
     }

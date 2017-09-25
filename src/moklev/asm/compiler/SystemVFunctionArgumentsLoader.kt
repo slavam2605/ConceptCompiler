@@ -76,7 +76,7 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
         // [rbp + 16] ... [rbp + 23] -- int_arg7 (when pull)
         val list = arrayListOf<Instruction>()
         var integerIndex = 0
-        val stackOffset = 16
+        var stackOffset = 16
         
         for ((type, name) in arguments) {
             val pointerType = Type.Pointer(type)
@@ -99,6 +99,8 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
                     // TODO [REVIEW] `type` works only is it is entirely in stack, but for several parts 
                     // TODO ... it will not eliminated and for now it is ok but need to be reworked
                     list.add(Store(shiftedVar, InStack(-stackOffset, type)))
+                    offset += type.size
+                    stackOffset += type.size
                     break
                 }
             }

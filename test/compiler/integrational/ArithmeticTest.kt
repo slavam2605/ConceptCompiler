@@ -45,9 +45,21 @@ internal class ArithmeticTest: RunnerTestBase() {
             return 0;
         }
     """, 4563189729)
-    
+
     @Test
     fun divTest3() = assertIntResults("""
+        fun divStackArguments(a: i64, b: i64, c: i64, d: i64, e: i64, f: i64, g: i64, h: i64): i64 {
+            return g / h;
+        }
+
+        fun main(): i64 {
+            printInt(divStackArguments(0, 0, 0, 0, 0, 0, 15, 3));
+            return 0;
+        }
+    """, 5)
+
+    @Test
+    fun divTest4() = assertIntResults("""
         fun divALot(a: i64, b: i64, c: i64, d: i64, e: i64, f: i64, g: i64, h: i64): i64 {
             var x: i64;
             var y: i64;

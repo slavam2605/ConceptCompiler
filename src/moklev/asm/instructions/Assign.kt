@@ -8,7 +8,7 @@ import moklev.asm.utils.ASMBuilder
  * @author Vyacheslav Moklev
  */
 class Assign(lhs: Variable, rhs1: CompileTimeValue) : UnaryInstruction(lhs, rhs1) {
-    override val type: Type = rhs1.type
+    override var type: Type = rhs1.type
     
     override fun toString() = "$lhs = $rhs1"
     
