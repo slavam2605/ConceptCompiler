@@ -152,7 +152,7 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
         for (register in calleeToSave) {
             val values = HashSet(assignment.values)
             if (register in values) {
-                registersToSave.add(register.register)
+                registersToSave.add(register.register) 
             }
             if (values.firstOrNull { it is InStack } != null) {
                 registersToSave.add("rbp")

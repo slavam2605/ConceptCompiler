@@ -62,6 +62,7 @@ internal open class RunnerTestBase: TestBase() {
         with(PrintWriter("$ROOT_DIRECTORY/out.asm")) {
             println("BITS 64")
             println("extern printInt")
+            print("extern printInt32\n")
             println("extern malloc")
             println("extern free")
             println()

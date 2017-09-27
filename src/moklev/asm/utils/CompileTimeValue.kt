@@ -50,8 +50,6 @@ class Variable(val name: String, var version: Int = 0) : CompileTimeValue(), Con
         StaticUtils.state.setVarType(name, type)
         return this
     }
-
-    
     
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -98,11 +96,17 @@ sealed class StaticAssemblyValue : CompileTimeValue() {
     /**
      * Specialization of [ofType] for [StaticAssemblyValue]
      */
-    override abstract fun ofType(type: Type): StaticAssemblyValue 
+    override abstract fun ofType(type: Type): StaticAssemblyValue
+    
+    open fun ofSize(size: Int): String {
+        return toString()
+    }  
 }
 
 /**
- * Location of variable in integer register with name [register]
+ * Location of variable in integer register.
+ * @param registerNames list of names for sizes 8, 4, 2, 1 (if available)
+ * @param type type of value in this register TODO eliminate and rest only [size]
  */
 // TODO magic constant 8
 class InRegister(val register: String, override val type: Type) : StaticAssemblyValue() {
@@ -123,6 +127,31 @@ class InRegister(val register: String, override val type: Type) : StaticAssembly
     override fun hashCode(): Int {
         return register.hashCode()
     }
+
+    override fun ofSize(size: Int): String {
+        if (size == 4) {
+            return when (register) {
+                "rax" -> "eax"
+                "rbx" -> "ebx"
+                "rcx" -> "ecx"
+                "rdx" -> "edx"
+                "rsi" -> "esi"
+                "rdi" -> "edi"
+                "rsp" -> "esp"
+                "rbp" -> "ebp"
+                "r8" -> "r8d"
+                "r9" -> "r9d"
+                "r10" -> "r10d"
+                "r11" -> "r11d"
+                "r12" -> "r12d"
+                "r13" -> "r13d"
+                "r14" -> "r14d"
+                "r15" -> "r15d"
+                else -> error("Unknown register")
+            }
+        }
+        return toString()
+    }
 }
 
 /**
@@ -138,6 +167,17 @@ data class InStack(val offset: Int, override val type: Type, val fromRsp: Boolea
 
     override fun ofType(type: Type): InStack {
         return InStack(offset, type, fromRsp)
+    }
+
+    override fun ofSize(size: Int): String {
+        val str = " [${if (fromRsp) "rsp" else "rbp"} ${if (offset < 0) "+" else "-"} ${Math.abs(offset)}]"
+        return when (size) {
+            8 -> "qword" 
+            4 -> "dword"
+            2 -> "word"
+            1 -> "byte"
+            else -> error("Unsoppported size $size")
+        } + str
     }
 }
 

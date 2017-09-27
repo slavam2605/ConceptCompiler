@@ -52,6 +52,7 @@ fun main(args: Array<String>) {
     with(PrintWriter("compiled\\file.asm")) {
         print("BITS 64\n")
         print("extern printInt\n")
+        print("extern printInt32\n")
         print("extern printPair\n")
         print("extern malloc\n")
         print("extern free\n")

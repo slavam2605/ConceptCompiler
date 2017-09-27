@@ -15,14 +15,14 @@ fun compileAssign(builder: ASMBuilder, lhs: StaticAssemblyValue, rhs: StaticAsse
                 // TODO get temp register
                 // TODO [NOT_CORRECT] for big sizes
                 val tempRegister = R15(lhs.type)
-                builder.appendLine("mov", tempRegister, "$rhs")
-                builder.appendLine("mov", "$lhs", tempRegister)
+                builder.appendLine("mov", tempRegister, rhs)
+                builder.appendLine("mov", lhs, tempRegister)
             }
             lhs is InStack && rhs is StackAddrVariable -> {
                 // TODO get temp register
                 val tempRegister = R15(lhs.type)
-                builder.appendLine("lea", tempRegister, "$rhs")
-                builder.appendLine("mov", "$lhs", tempRegister)
+                builder.appendLine("lea", tempRegister, rhs)
+                builder.appendLine("mov", lhs, tempRegister)
             }
             lhs is InStack && (rhs is Int64Const || rhs is InRegister) -> {
                 // TODO must be typed or at least sized

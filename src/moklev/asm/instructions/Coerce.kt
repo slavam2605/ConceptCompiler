@@ -26,9 +26,31 @@ class Coerce(override var type: Type, lhs: Variable, rhs1: CompileTimeValue) : U
     override fun coloringPreferences(): List<ColoringPreference> = listOf()
 
     override fun compile(builder: ASMBuilder, variableAssignment: Map<String, StaticAssemblyValue>) {
-        // TODO [NOT_CORRECT] should perform actual transform
         val firstOperand = lhs.value(variableAssignment)!!
         val secondOperand = rhs1.value(variableAssignment)!!
+        
+        val rhsType = rhs1.type
+        if (type != rhsType) {
+            when (type) {
+                is Type.Int64 -> {
+                    when (rhsType) {
+                        is Type.Int32 -> {
+                            val tempRegister = R15(Type.Int64)
+                            builder.appendLine("movsxd", tempRegister, secondOperand.ofSize(4))
+                            compileAssign(builder, firstOperand, tempRegister)
+                            return
+                        }
+                    }
+                }
+                is Type.Int32 -> {
+                    when (rhsType) {
+                        is Type.Int64 -> {
+                            /* do nothing, narrowing integer conversion */
+                        }
+                    }
+                }
+            }
+        }
 
         compileAssign(builder, firstOperand, secondOperand)
     }
