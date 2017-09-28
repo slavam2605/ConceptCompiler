@@ -12,7 +12,7 @@ import moklev.asm.utils.ASMBuilder
  */
 // TODO add support of floating arguments
 object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
-    val integerAssignment = listOf(RDI, RSI, RDX, RCX, R8, R9).map { it(Type.Undefined) }
+    val integerAssignment = listOf(RDI, RSI, RDX, RCX, R8, R9)
 
     override fun pushArguments(builder: ASMBuilder, arguments: List<StaticAssemblyValue>): Int {
         var integerIndex = 0
@@ -23,7 +23,6 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
                 list: MutableList<Pair<StaticAssemblyValue, StaticAssemblyValue>>
         ): List<Pair<StaticAssemblyValue, StaticAssemblyValue>> {
             for (arg in localArguments) {
-                @Suppress("IMPLICIT_CAST_TO_ANY")
                 when (arg) {
                     is InRegister,
                     is Int64Const,
@@ -32,7 +31,7 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
                             list.add(arg to integerAssignment[integerIndex])
                             integerIndex++
                         } else {
-                            list.add(arg to InStack(maxStackOffset - stackOffset, arg.type, true))
+                            list.add(arg to InStack(maxStackOffset - stackOffset, arg.size, true))
                             stackOffset += arg.size
                         }
                     }
@@ -41,12 +40,12 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
                         var size = arg.size
                         var offset = 0
                         while (size > 0) {
-                            val valuePart = InStack(arg.offset - offset, Type.Blob(minOf(8, size)))
+                            val valuePart = InStack(arg.offset - offset, minOf(8, size))
                             if (integerIndex < integerAssignment.size) {
                                 list.add(valuePart to integerAssignment[integerIndex])
                                 integerIndex++
                             } else {
-                                list.add(valuePart to InStack(maxStackOffset - stackOffset, Type.Blob(arg.size), true))
+                                list.add(valuePart to InStack(maxStackOffset - stackOffset, arg.size, true))
                                 stackOffset += arg.size
                             }
                             size -= valuePart.size
@@ -56,7 +55,8 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
                     is ComplexValue -> {
                         buildReassignment(arg.list, list)
                     }
-                }.apply { /* Just ensure `when` is exhaustive */ }
+                    else -> error("Unsupported branch: type = ${arg.javaClass}")
+                }
             }
             return list
         }
@@ -68,7 +68,7 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
         val reassignmentList = buildReassignment(arguments, arrayListOf())
         compileReassignment(builder, reassignmentList)
         if (stackOffset > 0)
-            builder.appendLine("sub", RSP(Type.Undefined), stackOffset)
+            builder.appendLine("sub", RSP.str, stackOffset.toString())
         return stackOffset
     }
     
@@ -90,7 +90,7 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
                 if (integerIndex < integerAssignment.size) {
                     val blobSize = minOf(8, size)
                     list.add(Store(shiftedVar, Variable(
-                            "#${integerAssignment[integerIndex].toString().toLowerCase()}"
+                            "#${integerAssignment[integerIndex].str.toLowerCase()}"
                     ).ofType(type)))
                     integerIndex++
                     offset += blobSize
@@ -98,7 +98,7 @@ object SystemVFunctionArgumentsLoader : FunctionArgumentsLoader {
                 } else {
                     // TODO [REVIEW] `type` works only is it is entirely in stack, but for several parts 
                     // TODO ... it will not eliminated and for now it is ok but need to be reworked
-                    list.add(Store(shiftedVar, InStack(-stackOffset, type)))
+                    list.add(Store(shiftedVar, InStack(-stackOffset, type.size).asCompileTimeValue(type)))
                     offset += type.size
                     stackOffset += type.size
                     break

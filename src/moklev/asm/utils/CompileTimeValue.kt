@@ -8,16 +8,16 @@ package moklev.asm.utils
  * Representation of static value. Could be valid for IR (Concept-ASM)
  * or for assembly ([StaticAssemblyValue]). Has a certain type.
  */
-sealed class CompileTimeValue {
+interface CompileTimeValue {
     /**
      * Type of the static value
      */
-    abstract val type: Type
+    val type: Type
 
     /**
      * Assume that value has another type
      */
-    abstract fun ofType(type: Type): CompileTimeValue
+    fun ofType(type: Type): CompileTimeValue
     
     /**
      * Transform IR representation to assembly representation (based on variable assignment
@@ -27,20 +27,21 @@ sealed class CompileTimeValue {
         return when (this) {
             is Variable -> variableAssignment[toString()]
             is StaticAssemblyValue -> this
+            is InternalCompileTimeValue -> value
             else -> error("Not supported: $javaClass")
         }
     }
 }
 
 /**
- * Marker interface for constant values which are allowed to be propagated
+ * Marker interface for immutable values which can be propagated
  */
-interface ConstValue
+interface ImmutableValue
 
 /**
  * Variable in the IR (Concept-ASM)
  */
-class Variable(val name: String, var version: Int = 0) : CompileTimeValue(), ConstValue {
+class Variable(val name: String, var version: Int = 0) : CompileTimeValue, ImmutableValue {
     override fun toString() = "$name${if (version > 0) ".$version" else ""}"
     
     override val type: Type
@@ -71,7 +72,7 @@ class Variable(val name: String, var version: Int = 0) : CompileTimeValue(), Con
  * Undefined value, used in intermediate compilation steps.
  * Should not occur in final code
  */
-object Undefined : CompileTimeValue() {
+object Undefined : CompileTimeValue {
     override val type: Type = Type.Undefined
     
     override fun toString() = "[undefined]"
@@ -86,35 +87,58 @@ object Undefined : CompileTimeValue() {
 /**
  * Representation of static value in assembly
  */
-sealed class StaticAssemblyValue : CompileTimeValue() {
+interface StaticAssemblyValue {
     /**
      * Size of an assembly value
      */
     val size: Int
-        get() = type.size
 
     /**
-     * Specialization of [ofType] for [StaticAssemblyValue]
+     * String representation of this value in the assembly for code generation
      */
-    override abstract fun ofType(type: Type): StaticAssemblyValue
+    val str: String
+
+    /**
+     * Conversion of value to the lower size
+     * @param size size of new value
+     * @return value with decreased size
+     */
+    fun ofSize(size: Int): StaticAssemblyValue
+
+    /**
+     * Converts internal assembly value to a compile time value of Concept-ASM.
+     * Use with attention, unlike other compile time values like [Variable] resulting
+     * compile time value can be mutable and can behave unexpectedly  
+     */
+    fun asCompileTimeValue(type: Type): CompileTimeValue {
+        return InternalCompileTimeValue(this, type)
+    }
+}
+
+class InternalCompileTimeValue(value: StaticAssemblyValue, override val type: Type) : CompileTimeValue {
+    override fun toString(): String = value.str
     
-    open fun ofSize(size: Int): String {
-        return toString()
-    }  
+    val value: StaticAssemblyValue = value.ofSize(type.size)
+
+    override fun ofType(type: Type): CompileTimeValue {
+        return InternalCompileTimeValue(value, type)
+    }
 }
 
 /**
  * Location of variable in integer register.
  * @param registerNames list of names for sizes 8, 4, 2, 1 (if available)
- * @param type type of value in this register TODO eliminate and rest only [size]
+ * @param size size of value in register
  */
-// TODO magic constant 8
-class InRegister(val register: String, override val type: Type) : StaticAssemblyValue() {
-    override fun toString(): String = register
+class InRegister(val registerNames: List<String>, override val size: Int) : StaticAssemblyValue {
+    override fun toString(): String = str
 
-    override fun ofType(type: Type): InRegister {
-        return InRegister(register,  type)
+    override fun ofSize(size: Int): InRegister {
+        return InRegister(registerNames,  size)
     }
+
+    override val str: String
+        get() = register
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -127,110 +151,121 @@ class InRegister(val register: String, override val type: Type) : StaticAssembly
     override fun hashCode(): Int {
         return register.hashCode()
     }
+    
+    private val register: String
+        get() = when (size) {
+            8 -> registerNames.getOrNull(0)
+            4 -> registerNames.getOrNull(1)
+            2 -> registerNames.getOrNull(2)
+            1 -> registerNames.getOrNull(3)
+            else -> null
+        } ?: error("Undefined register name for size $size")
+}
 
-    override fun ofSize(size: Int): String {
-        if (size == 4) {
-            return when (register) {
-                "rax" -> "eax"
-                "rbx" -> "ebx"
-                "rcx" -> "ecx"
-                "rdx" -> "edx"
-                "rsi" -> "esi"
-                "rdi" -> "edi"
-                "rsp" -> "esp"
-                "rbp" -> "ebp"
-                "r8" -> "r8d"
-                "r9" -> "r9d"
-                "r10" -> "r10d"
-                "r11" -> "r11d"
-                "r12" -> "r12d"
-                "r13" -> "r13d"
-                "r14" -> "r14d"
-                "r15" -> "r15d"
-                else -> error("Unknown register")
-            }
+/**
+ * Location of value on stack in [rbp - [offset]]
+ * @param offset offset from rbp (or rsp is [fromRsp] is `true`)
+ * @param size size of value
+ * @param fromRsp if `true` then value is located in [rsp - [offset]] rather than in [rbp - [offset]]
+ */
+data class InStack(val offset: Int, override val size: Int, val fromRsp: Boolean = false) : StaticAssemblyValue {
+    override fun toString(): String {
+        return "[${if (fromRsp) "rsp" else "rbp"} ${if (offset < 0) "+" else "-"} ${Math.abs(offset)}]:$size"
+    }
+    
+    override fun ofSize(size: Int): InStack {
+        return InStack(offset, size, fromRsp)
+    }
+
+    override val str: String 
+        get() {
+            val str = " [${if (fromRsp) "rsp" else "rbp"} ${if (offset < 0) "+" else "-"} ${Math.abs(offset)}]"
+            return when (size) {
+                8 -> "qword"
+                4 -> "dword"
+                2 -> "word"
+                1 -> "byte"
+                else -> error("Unsupported size $size")
+            } + str
         }
-        return toString()
+}
+
+/**
+ * Interface for constants (both compile time and assembly)
+ */
+interface ConstValue : CompileTimeValue, StaticAssemblyValue, ImmutableValue {
+    override val size: Int
+        get() = type.size
+
+    override fun ofType(type: Type): CompileTimeValue {
+        if (type == this.type)
+            return this
+        error("Can't change type of const value")
+    }
+
+    override fun ofSize(size: Int): StaticAssemblyValue {
+        if (size == this.size)
+            return this
+        error("Can't change size of const value")
     }
 }
 
 /**
- * Location of variable on stack in [rbp - [offset]]
+ * 64-bit signed integer constant value
  */
-// TODO eliminate default size
-// TODO assign this with regard to size (qword -> ...)
-// TODO toString() must not affect compilation
-data class InStack(val offset: Int, override val type: Type, val fromRsp: Boolean = false) : StaticAssemblyValue() {
-    override fun toString(): String = "qword [${
-        if (fromRsp) "rsp" else "rbp"
-    } ${if (offset < 0) "+" else "-"} ${Math.abs(offset)}]"
-
-    override fun ofType(type: Type): InStack {
-        return InStack(offset, type, fromRsp)
-    }
-
-    override fun ofSize(size: Int): String {
-        val str = " [${if (fromRsp) "rsp" else "rbp"} ${if (offset < 0) "+" else "-"} ${Math.abs(offset)}]"
-        return when (size) {
-            8 -> "qword" 
-            4 -> "dword"
-            2 -> "word"
-            1 -> "byte"
-            else -> error("Unsoppported size $size")
-        } + str
-    }
-}
-
-/**
- * Static integer constant value
- */
-data class Int64Const(val value: Long) : StaticAssemblyValue(), ConstValue {
-    override fun toString(): String = "$value"
+data class Int64Const(val value: Long) : ConstValue {
+    override fun toString(): String = str
 
     override val type: Type = Type.Int64
-
-    override fun ofType(type: Type): Nothing = error("Cannot convert a const value")
+    
+    override val str: String
+        get() = value.toString()
 }
 
 /**
  * Stack address: [rbp - [offset]]
  */
-data class StackAddrVariable(val offset: Int, override val type: Type) : StaticAssemblyValue(), ConstValue {
-    // TODO [NOT_CORRECT] StackAddrVariable has a certain addr type?
-    override fun toString(): String = "[rbp ${sign(-offset)} ${Math.abs(offset)}]"
+data class StackAddrVariable(val offset: Int, override val type: Type) : ConstValue {
+    override fun toString(): String = str
+
+    override val str: String
+        get() = "[rbp ${sign(-offset)} ${Math.abs(offset)}]"
 
     private fun sign(value: Int): Char = when {
         value >= 0 -> '+'
         else -> '-'
     }
-
-    override fun ofType(type: Type): Nothing = error("Cannot convert a const value")
 }
 
-data class ComplexValue(val list: List<StaticAssemblyValue>, override val type: Type) : StaticAssemblyValue() {
-    override fun ofType(type: Type): ComplexValue {
-        return ComplexValue(list, type)
+data class ComplexValue(val list: List<StaticAssemblyValue>) : StaticAssemblyValue {
+    override fun toString(): String = error("toString() from ComplexValue")
+    
+    override val size: Int
+        get() = list.sumBy { it.size }
+    
+    override val str: String
+        get() = error("str from ComplexValue")
+
+    override fun ofSize(size: Int): StaticAssemblyValue {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }
 
-private fun inRegisterConstructor(name: String) = { type: Type ->
-    InRegister(name, type)
-}
-
 // Useful constants
-val RAX = inRegisterConstructor("rax")
-val RBX = inRegisterConstructor("rbx")
-val RCX = inRegisterConstructor("rcx")
-val RDX = inRegisterConstructor("rdx")
-val RDI = inRegisterConstructor("rdi")
-val RSI = inRegisterConstructor("rsi")
-val RBP = inRegisterConstructor("rbp")
-val RSP = inRegisterConstructor("rsp")
-val R8 = inRegisterConstructor("r8")
-val R9 = inRegisterConstructor("r9")
-val R10 = inRegisterConstructor("r10")
-val R11 = inRegisterConstructor("r11")
-val R12 = inRegisterConstructor("r12")
-val R13 = inRegisterConstructor("r13")
-val R14 = inRegisterConstructor("r14")
-val R15 = inRegisterConstructor("r15")
+// TODO lower byte of rsi, rdi, rsp, rbp?
+val RAX = InRegister(listOf("rax", "eax", "ax", "al"), 8)
+val RBX = InRegister(listOf("rbx", "ebx", "bx", "bl"), 8)
+val RCX = InRegister(listOf("rcx", "ecx", "cx", "cl"), 8)
+val RDX = InRegister(listOf("rdx", "edx", "dx", "dl"), 8)
+val RDI = InRegister(listOf("rdi", "edi", "di"), 8)
+val RSI = InRegister(listOf("rsi", "esi", "si"), 8)
+val RBP = InRegister(listOf("rbp", "ebp", "bp"), 8)
+val RSP = InRegister(listOf("rsp", "esp", "sp"), 8)
+val R8 = InRegister(listOf("r8", "r8d", "r8w", "r8b"), 8)
+val R9 = InRegister(listOf("r9", "r9d", "r9w", "r9b"), 8)
+val R10 = InRegister(listOf("r10", "r10d", "r10w", "r10b"), 8)
+val R11 = InRegister(listOf("r11", "r11d", "r11w", "r11b"), 8)
+val R12 = InRegister(listOf("r12", "r12d", "r12w", "r12b"), 8)
+val R13 = InRegister(listOf("r13", "r13d", "r13w", "r13b"), 8)
+val R14 = InRegister(listOf("r14", "r14d", "r14w", "r14b"), 8)
+val R15 = InRegister(listOf("r15", "r15d", "r15w", "r15b"), 8)

@@ -110,8 +110,8 @@ object SSATransformer {
         val startBlock = Block(startBlockLabel, ArrayDeque())
         // all registers are reserved to prevent invalid coloring with usage of raw registers
         for (argumentRegister in SystemVFunctionArgumentsLoader.integerAssignment) {
-            val newVar = Variable( "#${argumentRegister.toString().toLowerCase()}")
-            startBlock.instructions.add(Assign(newVar, argumentRegister.ofType(Type.Int64)))
+            val newVar = Variable( "#${argumentRegister.str.toLowerCase()}")
+            startBlock.instructions.add(Assign(newVar, argumentRegister.asCompileTimeValue(Type.Int64)))
         }
 
         startBlock.instructions.addAll(
@@ -287,7 +287,7 @@ object SSATransformer {
         blocks
                 .flatMap { it.instructions }
                 .filterIsInstance<Assign>()
-                .filter { it.rhs1 is ConstValue }
+                .filter { it.rhs1 is ImmutableValue }
                 .forEach { assignMap[it.lhs] = assignMap[it.rhs1] ?: it.rhs1 }
         val rightUsedVariables = HashSet<String>()
         blocks

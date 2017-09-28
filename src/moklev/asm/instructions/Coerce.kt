@@ -35,8 +35,8 @@ class Coerce(override var type: Type, lhs: Variable, rhs1: CompileTimeValue) : U
                 is Type.Int64 -> {
                     when (rhsType) {
                         is Type.Int32 -> {
-                            val tempRegister = R15(Type.Int64)
-                            builder.appendLine("movsxd", tempRegister, secondOperand.ofSize(4))
+                            val tempRegister = R15
+                            builder.appendLine("movsxd", tempRegister.str, secondOperand.ofSize(4).str)
                             compileAssign(builder, firstOperand, tempRegister)
                             return
                         }

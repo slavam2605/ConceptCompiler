@@ -43,9 +43,10 @@ class Add(override var type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: 
         val lhsValue = lhs.value(variableAssignment)!!
         val rhs1Value = rhs1.value(variableAssignment)!!
         val rhs2Value = rhs2.value(variableAssignment)!!
- 
-        if (rhs1.type != type || rhs2.type != type)
-            error("Arguments of Add must have the same type, found: $type <${rhs1.type}, ${rhs2.type}>")
+
+        // TODO [REVIEW] issue: Pointer<T> + Int64
+//        if (rhs1.type != type || rhs2.type != type)
+//            error("Arguments of Add must have the same type, found: $type <${rhs1.type}, ${rhs2.type}>")
         
         compileBinaryOperation(builder, "add", lhsValue, rhs1Value, rhs2Value, symmetric = true)
     }

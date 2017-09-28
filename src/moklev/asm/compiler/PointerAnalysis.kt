@@ -102,6 +102,10 @@ data class PointsToInfo(val pointsTo: Map<RuntimeObject, Set<RuntimeObject>>)
 
 sealed class RuntimeObject {
     data class VariableObject(val name: String) : RuntimeObject()
-    data class StackObject(val addr: StackAddrVariable) : RuntimeObject()
+    
+    data class StackObject(val addr: StackAddrVariable) : RuntimeObject() {
+        override fun toString(): String = "StackObject[" + addr.str + "]"
+    }
+    
     object HeapObject : RuntimeObject()
 }

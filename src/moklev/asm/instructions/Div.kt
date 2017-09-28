@@ -28,8 +28,8 @@ class Div(override var type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: 
     override fun coloringPreferences(): List<ColoringPreference> {
         // TODO [REVIEW] depend on type
         return listOf(
-                Target("$lhs", RAX(Type.Undefined)),
-                Target("$rhs1", RAX(Type.Undefined))
+                Target("$lhs", RAX),
+                Target("$rhs1", RAX)
         )
     }
 

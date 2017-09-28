@@ -29,7 +29,7 @@ class Load(override var type: Type, override val lhs: Variable, val rhsAddr: Com
 
     override fun coloringPreferences(): List<ColoringPreference> {
         if (rhsAddr is StackAddrVariable) {
-            return listOf(Predefined("$lhs", InStack(rhsAddr.offset, rhsAddr.type.dereference())))
+            return listOf(Predefined("$lhs", InStack(rhsAddr.offset, rhsAddr.type.dereference().size)))
         }
         return emptyList()
     }
@@ -45,17 +45,18 @@ class Load(override var type: Type, override val lhs: Variable, val rhsAddr: Com
 
         // TODO sizeof here
 
-        val tempRegister1 = R15(Type.Int64)
-        val tempRegister2 = R14(Type.Int64)
+        val tempRegister1 = R15
+        val tempRegister2 = R14
         val actualLhs = if (lhs is InStack) tempRegister1 else lhs
         val actualRhsAddr = if (rhsAddr is InStack) tempRegister2 else rhsAddr
 
         compileAssign(builder, actualRhsAddr, rhsAddr)
 
+        // TODO [NOT_CORRECT] ahtung, sizes
         if (actualRhsAddr is StackAddrVariable) {
-            builder.appendLine("mov", actualLhs, "qword $actualRhsAddr")
+            builder.appendLine("mov", actualLhs.str, "qword " + actualRhsAddr.str)
         } else {
-            builder.appendLine("mov", actualLhs, "qword [$actualRhsAddr]")
+            builder.appendLine("mov", actualLhs.str, "qword [" + actualRhsAddr.str + "]")
         }
 
         compileAssign(builder, lhs, actualLhs)

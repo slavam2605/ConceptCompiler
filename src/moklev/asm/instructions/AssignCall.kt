@@ -36,7 +36,7 @@ class AssignCall(override var type: Type, override val lhs: Variable, val funcNa
 
     override fun coloringPreferences(): List<ColoringPreference> {
         val result = ArrayList<ColoringPreference>()
-        result.add(Target("$lhs", RAX(type))) // TODO [NOT_CORRECT] for types larger than 8 RAX is not enough
+        result.add(Target("$lhs", RAX)) // TODO [NOT_CORRECT] for types larger than 8 RAX is not enough
         args
                 .asSequence()
                 .filter { it.first == Type.Int64 }

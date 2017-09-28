@@ -26,8 +26,8 @@ class Mod(override var type: Type, lhs: Variable, rhs1: CompileTimeValue, rhs2: 
 
     override fun coloringPreferences(): List<ColoringPreference> {
         return listOf(
-                Target("$lhs", RDX(Type.Undefined)),
-                Target("$rhs1", RAX(Type.Undefined))
+                Target("$lhs", RDX),
+                Target("$rhs1", RAX)
         )
     }
 

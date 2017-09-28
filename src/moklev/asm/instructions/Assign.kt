@@ -19,8 +19,8 @@ class Assign(lhs: Variable, rhs1: CompileTimeValue) : UnaryInstruction(lhs, rhs1
     override fun simplify() = listOf(this)
 
     override fun coloringPreferences(): List<ColoringPreference> {
-        if (rhs1 is InRegister) 
-            return listOf(Predefined("$lhs", rhs1))
+        if (rhs1 is InternalCompileTimeValue && rhs1.value is InRegister) 
+            return listOf(Predefined("$lhs", rhs1.value))
         return listOf(Coalesce("$lhs", "$rhs1"))
     }
 

@@ -10,7 +10,7 @@ class ASMBuilder(val isDebug: Boolean = false) {
         builder.append("$label:\n")
     }
     
-    fun appendLine(instruction: String, vararg operands: Any?) {
+    fun appendLine(instruction: String, vararg operands: String) {
         builder
                 .append("    ")
                 .append(instruction)

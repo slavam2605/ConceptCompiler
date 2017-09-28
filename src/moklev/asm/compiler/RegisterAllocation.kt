@@ -321,12 +321,12 @@ fun dummyColorGraph(
         if (node !in coloring) {
             if (remainColors.isNotEmpty()) {
                 // TODO [NOT_CORRECT] big nodes (type.size > 8) need more than one register
-                val color = remainColors.first().ofType(type)
+                val color = remainColors.first().ofSize(type.size)
                 coloring[node] = color
                 remainColors.remove(color)
             } else {
                 maxStackOffset += type.size
-                coloring[node] = InStack(maxStackOffset, type)
+                coloring[node] = InStack(maxStackOffset, type.size)
             }
         }
     }

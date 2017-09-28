@@ -30,7 +30,7 @@ class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction, Unc
         // TODO [NOT_CORRECT] depends on type
         if (rhs is Variable) {
             return listOf(
-                    Target("$rhs", RAX(type))
+                    Target("$rhs", RAX)
             )
         }
         return listOf()
@@ -44,7 +44,7 @@ class Return(val type: Type, val rhs: CompileTimeValue) : BranchInstruction, Unc
         // TODO [REVIEW] should check type == rhs.type
         when (type) {
             Type.Int64 -> {
-                compileAssign(builder, RAX(type), rhs.value(variableAssignment)!!)
+                compileAssign(builder, RAX, rhs.value(variableAssignment)!!)
                 builder.appendLine("jmp", destLabel)
             }
             else -> NotImplementedError()

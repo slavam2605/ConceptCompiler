@@ -1,7 +1,5 @@
 package moklev.asm.utils
 
-import moklev.dummy_lang.parser.DummyLangParser
-
 /**
  * @author Moklev Vyacheslav
  */

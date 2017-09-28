@@ -36,20 +36,20 @@ const val endBlockLabel = ".func_end"
 object IntArgumentsAssignment {
     operator fun get(index: Int): StaticAssemblyValue {
         return when (index) {
-            0 -> RDI(Type.Undefined)
-            1 -> RSI(Type.Undefined)
-            2 -> RDX(Type.Undefined)
-            3 -> RCX(Type.Undefined)
-            4 -> R8(Type.Undefined)
-            5 -> R9(Type.Undefined)
-            else -> InStack(-8 * (index - 4), Type.Undefined) // TODO WAT
+            0 -> RDI
+            1 -> RSI
+            2 -> RDX
+            3 -> RCX
+            4 -> R8
+            5 -> R9
+            else -> InStack(-8 * (index - 4), 8) // TODO WAT
         }
     }
 }
 
 val calleeToSave = listOf(
         RBP, RBX, R12, R13, R14, R15
-).map { it(Type.Undefined) }
+)
 
 fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     dest.appendLine("global $name")
@@ -122,7 +122,7 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
     val variableAssignment = dummyColorGraph(
             nodes,
 //            listOf(RAX, RBX, RCX, RDX, R8, R9, R10, R11), // TODO normal registers
-            listOf(RDI, RSI, RDX, RCX, R8, R9, RAX, R10).map { it(Type.Undefined) }, // TODO normal registers
+            listOf(RDI, RSI, RDX, RCX, R8, R9, RAX, R10), // TODO normal registers
             mapOf(
                     startBlockLabel to intArguments.mapIndexedNotNull { i, s ->
                             val name = externalNames[s] ?: return@mapIndexedNotNull null
@@ -152,7 +152,7 @@ fun <A : Appendable> ASMFunction.compileTo(dest: A): A {
         for (register in calleeToSave) {
             val values = HashSet(assignment.values)
             if (register in values) {
-                registersToSave.add(register.register) 
+                registersToSave.add(register.str) 
             }
             if (values.firstOrNull { it is InStack } != null) {
                 registersToSave.add("rbp")
